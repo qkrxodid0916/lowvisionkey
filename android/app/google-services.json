@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "176657075350",
+    "project_id": "lowvision-key",
+    "storage_bucket": "lowvision-key.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:176657075350:android:52edbc66cff09133f986b7",
+        "android_client_info": {
+          "package_name": "com.pty.lowvision.lowvision_key"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "176657075350-kmc1g0nlpr2kcs27p6bnfn7jm5g6tep5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pty.lowvision.lowvision_key",
+            "certificate_hash": "c3594069cfa13fa5953c7561706335821d217b24"
+          }
+        },
+        {
+          "client_id": "176657075350-19ib9ovkagokncepdbjed2m84iugv4as.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt2tINCI7jC0gFwJaqhK5tI-BoIgg4B78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "176657075350-19ib9ovkagokncepdbjed2m84iugv4as.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "176657075350-i8lokk5et17n48hfckqr1ujrkp59u6vl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.pty.lowvision.lowvisionKey"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
