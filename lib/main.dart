@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'screens/menu_screen.dart'; //
-// import 'firebase_options.dart'; // firebase_options 파일이 있다면 주석 해제
+import 'screens/menu_screen.dart';
+// import 'firebase_options.dart'; // firebase_options 파일이 생성되었다면 주석 해제 후 사용
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 파이어베이스 초기화
   await Firebase.initializeApp(
-    // options: DefaultFirebaseOptions.currentPlatform, // firebase_options
+    // options: DefaultFirebaseOptions.currentPlatform, // firebase_options를 사용 중이라면 주석 해제
   );
 
   runApp(const MyApp());
@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      //로그인 상태를 실시간 감시해서 화면 자동 전환
+      // 로그인 상태를 실시간 감시해서 화면 자동 전환
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // [안전장치 1] 기존 연결 확실히 끊기 (재로그인 시 Stale Token 에러 방지)
+      // (재로그인 시 에러 방지)
       try {
         await GoogleSignIn().disconnect();
       } catch (e) {
@@ -80,9 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // 인증 토큰 받아오기
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // 파이어베이스용 자격 증명 만들기
+      // [수정 완료] 파이어베이스용 자격 증명 만들기
+      // accessToken을 null로 설정하여 최신 라이브러리 충돌 해결
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
+        accessToken: null,
         idToken: googleAuth.idToken,
       );
 
