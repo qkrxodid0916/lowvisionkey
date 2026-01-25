@@ -3,8 +3,6 @@
     <!-- ✅ Android 12+ -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <!-- 광고(퍼블리싱) 쓸 거면 필요 -->
-    <!-- <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" /> -->
 
     <!-- ✅ Android 11 이하 호환 -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
