@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
+import '../utils/ble_midi_manager.dart'; // ✅ 추가
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 class PianoScreen extends StatefulWidget {
   const PianoScreen({super.key});
@@ -15,7 +17,6 @@ class _PianoScreenState extends State<PianoScreen> {
   int? _sfId; // loaded soundfont id
   bool _loading = true;
 
-  // 88 keys: A0(21) ~ C8(108)
   static const int _minMidi = 21;
   static const int _maxMidi = 108;
 
@@ -28,7 +29,7 @@ class _PianoScreenState extends State<PianoScreen> {
 
   String _label(int midi) {
     final name = _noteNames[midi % 12];
-    final octave = (midi ~/ 12) - 1; // MIDI standard: 60 = C4
+    final octave = (midi ~/ 12) - 1;
     return '$name$octave';
   }
 
@@ -40,15 +41,12 @@ class _PianoScreenState extends State<PianoScreen> {
 
   Future<void> _initSoundFont() async {
     try {
-      // assets 경로를 그대로 넣는 예제가 공식 문서에 있습니다.
-      // (본인 sf2 파일명/경로에 맞게 변경)
       final int sfId = await _midi.loadSoundfontAsset(
         assetPath: 'assets/sf2/Piano.sf2',
         bank: 0,
         program: 0,
       );
 
-      // 피아노(보통 bank 0, program 0) 를 channel 0에 명시적으로 선택
       await _midi.selectInstrument(sfId: sfId, channel: 0, bank: 0, program: 0);
 
       if (!mounted) return;
@@ -68,14 +66,22 @@ class _PianoScreenState extends State<PianoScreen> {
 
   void _play(int midi, {int velocity = 110}) {
     final sfId = _sfId;
-    if (sfId == null) return;
-    _midi.playNote(sfId: sfId, channel: 0, key: midi, velocity: velocity);
+    if (sfId != null) {
+      _midi.playNote(sfId: sfId, channel: 0, key: midi, velocity: velocity);
+    }
+
+    // ✅ BLE-MIDI Note On (연결되어 있을 때만 전송됨)
+    BleMidiManager.I.sendNoteOn(midi, velocity: velocity, channel: 0);
   }
 
   void _stop(int midi) {
     final sfId = _sfId;
-    if (sfId == null) return;
-    _midi.stopNote(sfId: sfId, channel: 0, key: midi);
+    if (sfId != null) {
+      _midi.stopNote(sfId: sfId, channel: 0, key: midi);
+    }
+
+    // ✅ BLE-MIDI Note Off
+    BleMidiManager.I.sendNoteOff(midi, channel: 0);
   }
 
   @override
@@ -84,19 +90,40 @@ class _PianoScreenState extends State<PianoScreen> {
     final isTablet = shortestSide >= 600;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('피아노 연주 (88키)')),
+      appBar: AppBar(
+        title: const Text('피아노 연주 (88키)'),
+        actions: [
+          ValueListenableBuilder(
+            valueListenable: BleMidiManager.I.connectionState,
+            builder: (context, st, _) {
+              final connected = st == DeviceConnectionState.connected;
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Center(
+                  child: Text(
+                    connected ? "BLE:ON" : "BLE:OFF",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: connected ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : (_sfId == null)
           ? const Center(
         child: Text(
-          'SoundFont 로딩 실패\nassets/sf2/TimGM6mb.sf2 경로와 pubspec assets 설정을 확인하세요.',
+          'SoundFont 로딩 실패\nassets/sf2/Piano.sf2 경로와 pubspec assets 설정을 확인하세요.',
           textAlign: TextAlign.center,
         ),
       )
           : LayoutBuilder(
         builder: (context, constraints) {
-          // 화면 크기에 따라 키 크기/글씨가 자동으로 적당히 변하도록 계산
           final double w = (constraints.maxWidth / 7.5)
               .clamp(44.0, isTablet ? 90.0 : 70.0);
           const double gap = 2.0;
@@ -107,14 +134,12 @@ class _PianoScreenState extends State<PianoScreen> {
           final double blackW = (w * 0.62).clamp(28.0, 60.0);
           final double blackH = (h * 0.62).clamp(140.0, 260.0);
 
-          // white/black key 데이터 구성
           final List<int> whiteMidis = [];
           final List<_BlackKey> blackKeys = [];
 
           int whiteIndex = 0;
           for (int midi = _minMidi; midi <= _maxMidi; midi++) {
             if (_isBlack(midi)) {
-              // 직전 흰 건반 인덱스에 붙여 배치
               blackKeys.add(_BlackKey(midi: midi, leftWhiteIndex: whiteIndex - 1));
             } else {
               whiteMidis.add(midi);
@@ -131,7 +156,6 @@ class _PianoScreenState extends State<PianoScreen> {
               height: constraints.maxHeight,
               child: Stack(
                 children: [
-                  // 흰 건반
                   Row(
                     children: [
                       const SizedBox(width: gap / 2),
@@ -149,8 +173,6 @@ class _PianoScreenState extends State<PianoScreen> {
                         ),
                     ],
                   ),
-
-                  // 검은 건반 (흰 건반 위에 overlay)
                   for (final bk in blackKeys)
                     Positioned(
                       left: (bk.leftWhiteIndex + 1) * whiteStride - (blackW / 2),

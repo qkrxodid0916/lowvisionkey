@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'ble_scan_screen.dart';
 import '../function/piano_screen.dart';
 
 /// ✅ enum은 반드시 파일 최상단(Top-level)에 선언
@@ -469,6 +469,28 @@ class _MenuScreenState extends State<MenuScreen> {
                 MaterialPageRoute(builder: (context) => const PianoScreen()),
               );
             }),
+            SizedBox(
+              width: double.infinity,
+              height: 90,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const BleScanScreen(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "BLE 연결",
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
 
             if (_working) ...[
               const SizedBox(height: 20),
