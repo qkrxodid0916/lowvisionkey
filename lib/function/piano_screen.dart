@@ -1,7 +1,6 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
-import '../utils/ble_midi_manager.dart'; // ✅ 추가
+import '../utils/ble_midi_manager.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 class PianoScreen extends StatefulWidget {

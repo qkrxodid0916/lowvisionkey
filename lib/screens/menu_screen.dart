@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'ble_scan_screen.dart';
 import '../function/piano_screen.dart';
+import 'lesson_screen.dart'; // ✅ 추가
 
 /// ✅ enum은 반드시 파일 최상단(Top-level)에 선언
 enum _ExistingAccountAction { cancel, useExisting, chooseAnother }
@@ -104,9 +105,6 @@ class _MenuScreenState extends State<MenuScreen> {
     return result ?? _ExistingAccountAction.cancel;
   }
 
-  /// 게스트(익명) 계정을 구글 계정에 "연결" 시도
-  /// - 성공: UID 유지(데이터 보존)
-  /// - 실패(credential-already-in-use): 이미 존재하는 계정 -> 다른 계정/기존 계정 사용
   Future<void> _linkGuestToGoogle() async {
     final user = _user;
     if (user == null) return;
@@ -169,7 +167,6 @@ class _MenuScreenState extends State<MenuScreen> {
               );
             }
           }
-          // cancel: 게스트 유지
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -228,7 +225,6 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 헤더
                   Row(
                     children: [
                       Container(
@@ -275,7 +271,6 @@ class _MenuScreenState extends State<MenuScreen> {
 
                   const SizedBox(height: 14),
 
-                  // 상태/설명 카드
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -315,7 +310,6 @@ class _MenuScreenState extends State<MenuScreen> {
 
                   const SizedBox(height: 12),
 
-                  // 게스트 안내 (게스트일 때만)
                   if (isGuest) ...[
                     Container(
                       width: double.infinity,
@@ -349,7 +343,6 @@ class _MenuScreenState extends State<MenuScreen> {
                     const SizedBox(height: 12),
                   ],
 
-                  // 버튼들
                   Column(
                     children: [
                       SizedBox(
@@ -452,12 +445,11 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
             const SizedBox(height: 50),
 
+            // ✅ 여기만 변경: SnackBar -> LessonScreen 이동
             buildMenuButton("🎹 수업 시작하기", Icons.school, Colors.blue, () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("수업 목록 화면으로 이동합니다 (준비중)", style: TextStyle(fontSize: 20)),
-                  duration: Duration(seconds: 1),
-                ),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LessonScreen()),
               );
             }),
 
@@ -469,6 +461,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 MaterialPageRoute(builder: (context) => const PianoScreen()),
               );
             }),
+
             SizedBox(
               width: double.infinity,
               height: 90,
@@ -490,7 +483,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
               ),
             ),
-
 
             if (_working) ...[
               const SizedBox(height: 20),
