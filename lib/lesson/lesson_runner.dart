@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'lesson_models.dart';
 import 'progress_models.dart';
+import '../utils/tts_service.dart';
 
 class LessonRunner {
   final ProgressState progress;
@@ -19,6 +20,9 @@ class LessonRunner {
 
   /// ✅ "현재 step"에서 틀린 횟수
   final ValueNotifier<int> wrongCountOnStep = ValueNotifier<int>(0);
+
+  /// ✅ TTS
+  final _tts = TtsService.I;
 
   Lesson? get lesson => _lesson;
 
@@ -52,12 +56,20 @@ class LessonRunner {
     if (ok) {
       lastHit.value = true;
       progress.of(target).success++;
+      _tts.speak("정답");
       _advance();
     } else {
       lastHit.value = false;
       wrongCountOnStep.value = wrongCountOnStep.value + 1;
       progress.of(target).fail++;
-      // 실패 표시 없이 그대로 유지(재시도)
+
+      // ✅ 1회: "다시" / 2회 이상: "정답은 ~"
+      if (wrongCountOnStep.value >= 2) {
+        _tts.speak("정답은 ${_midiToKo(target)}");
+        // 실패 표시 없이 그대로 유지(재시도)
+      } else {
+        _tts.speak("다시");
+      }
     }
   }
 
@@ -87,6 +99,7 @@ class LessonRunner {
         isCompleted.value = true;
         currentStep.value = null;
         progress.lastNewNotes = List<int>.from(l.newNotes);
+        _tts.speak("레슨 완료");
         return;
       }
     }
@@ -103,7 +116,18 @@ class LessonRunner {
       currentStep.value = null;
       return;
     }
-    currentStep.value = l.tasks[_taskIndex].steps[_stepIndex];
+
+    final step = l.tasks[_taskIndex].steps[_stepIndex];
+    currentStep.value = step;
+
+    // ✅ 새 step 목표 안내 (현재는 단음 기준)
+    final target = step.targetNotes.first;
+    _tts.speak(_midiToKo(target));
+  }
+
+  String _midiToKo(int midi) {
+    const names = ["도", "도#", "레", "레#", "미", "파", "파#", "솔", "솔#", "라", "라#", "시"];
+    return names[midi % 12];
   }
 
   void dispose() {

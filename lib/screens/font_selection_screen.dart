@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'menu_screen.dart';
+import 'package:lowvision_key/screens/menu_screen.dart';
 
 class FontSelectionScreen extends StatefulWidget {
   const FontSelectionScreen({super.key});
@@ -9,14 +9,12 @@ class FontSelectionScreen extends StatefulWidget {
 }
 
 class _FontSelectionScreenState extends State<FontSelectionScreen> {
-  // 기본 글씨 크기
   double _fontSize = 30.0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // AppBar(제목줄)를 제거하여 화면을 넓게 씁니다.
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -24,16 +22,13 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
-              // 1. 안내 문구
               const Text(
                 "글씨가 잘 보이시나요?",
                 style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.black),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 20),
 
-              // 2. 미리보기 박스 (Expanded로 남는 공간 꽉 채움)
               Expanded(
                 child: Container(
                   width: double.infinity,
@@ -41,7 +36,7 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.blue, width: 5), // 굵은 파란 테두리
+                    border: Border.all(color: Colors.blue, width: 5),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.grey.withOpacity(0.2),
@@ -51,9 +46,8 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
                       ),
                     ],
                   ),
-                  // 내용물을 정중앙에 배치
                   alignment: Alignment.center,
-                  child: SingleChildScrollView( // 혹시 글씨가 너무 커지면 스크롤 되게 안전장치
+                  child: SingleChildScrollView(
                     child: Text(
                       "설정한 글씨 크기가\n적용된 화면입니다.\n잘 보이시나요?",
                       style: TextStyle(fontSize: _fontSize, fontWeight: FontWeight.bold, color: Colors.black),
@@ -64,7 +58,6 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 3. 슬라이더
               Row(
                 children: [
                   const Text("가", style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
@@ -74,13 +67,11 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
                       min: 20.0,
                       max: 60.0,
                       activeColor: Colors.blue,
-                      inactiveColor: Colors.blue[100],
+                      inactiveColor: Colors.blueAccent,
                       thumbColor: Colors.blue,
                       label: "${_fontSize.round()}",
                       onChanged: (value) {
-                        setState(() {
-                          _fontSize = value;
-                        });
+                        setState(() => _fontSize = value);
                       },
                     ),
                   ),
@@ -90,7 +81,6 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
 
               const SizedBox(height: 20),
 
-              // 4. 확인 버튼
               SizedBox(
                 width: double.infinity,
                 height: 80,
@@ -98,16 +88,12 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
-                  onPressed: () {
-                    _showConfirmationDialog();
-                  },
+                  onPressed: _showConfirmationDialog,
                   child: const Text(
-                      "확 인",
-                      style: TextStyle(fontSize: 35, color: Colors.white, fontWeight: FontWeight.bold)
+                    "확 인",
+                    style: TextStyle(fontSize: 35, color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -118,7 +104,6 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
     );
   }
 
-  // 팝업창
   void _showConfirmationDialog() {
     showDialog(
       context: context,
@@ -143,12 +128,11 @@ class _FontSelectionScreenState extends State<FontSelectionScreen> {
                 ),
                 const SizedBox(height: 30),
                 Text(
-                  "지금 설정하신 크기로\n수업을 시작할까요?",
+                  "지금 설정하 hook신 크기로\n수업을 시작할까요?",
                   style: TextStyle(fontSize: _fontSize, fontWeight: FontWeight.bold, color: Colors.black),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
-
                 Row(
                   children: [
                     Expanded(

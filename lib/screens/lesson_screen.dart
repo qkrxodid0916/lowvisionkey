@@ -1,5 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
+
+// ✅ 추가
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// ✅ 추가: 저장 레포지토리 (경로는 네 프로젝트 구조에 맞춰둔 기준)
+import '../data/lesson_results_repository.dart';
 
 import '../widgets/piano_keyboard.dart';
 import '../utils/solfege.dart';
@@ -8,6 +16,10 @@ import '../lesson/lesson_generator.dart';
 import '../lesson/lesson_models.dart';
 import '../lesson/lesson_runner.dart';
 import '../lesson/progress_models.dart';
+import '../lesson/lesson_result.dart';
+
+import '../utils/ble_midi_manager.dart';
+import 'lesson_result_screen.dart';
 
 /// 흑건반 표기 정책
 enum AccidentalStyle { sharp, flat }
@@ -24,7 +36,6 @@ class _LessonScreenState extends State<LessonScreen> {
   int? _sfId;
   bool _loading = true;
 
-  // ✅ 레슨 notePool 기준으로 화면 범위를 매번 갱신 (1옥타브 흰건반 7개가 기본)
   int _minMidi = 60;
   int _maxMidi = 71;
 
@@ -34,6 +45,9 @@ class _LessonScreenState extends State<LessonScreen> {
   final LessonGenerator _generator = LessonGenerator();
   late final LessonRunner _runner;
 
+  // ✅ 추가: Firestore 저장용 repo
+  final LessonResultsRepository _lessonResultsRepo = LessonResultsRepository();
+
   // 오답 피드백(화면 플래시 + 토스트)
   bool _flashWrong = false;
   String? _toastText;
@@ -42,18 +56,226 @@ class _LessonScreenState extends State<LessonScreen> {
   // 힌트 깜빡임(2회 이상 오답 시)
   bool _hintPulseOn = false;
 
-  // ✅ “진행도 기반” 흑건반 표기 정책 (초반 # 위주 → 진행되면 ♭ 도입)
+  // 흑건반 ( #  →  ♭ )
   int _lessonSerial = 0;
   AccidentalStyle _accidentalStyle = AccidentalStyle.sharp;
+
+  // ===== BLE 입력 모드(옵션) =====
+  bool _useBleInput = false;
+  bool _openedModeSheetOnce = false;
+  bool _prevConnected = false;
+
+  StreamSubscription<int>? _bleOnSub;
+  StreamSubscription<int>? _bleOffSub;
+
+  // ===== 결과 화면 이동/결과 생성 =====
+  VoidCallback? _completeListener;
+  bool _navigatingToResult = false;
+  DateTime? _lessonStartedAt;
 
   @override
   void initState() {
     super.initState();
+
     _runner = LessonRunner(progress: _progress);
+
+    // ✅ 레슨 완료 감지 → 결과 화면 이동 (+ Firestore 저장)
+    _completeListener = () async {
+      if (!mounted) return;
+      if (_runner.isCompleted.value != true) return;
+      if (_navigatingToResult) return;
+
+      _navigatingToResult = true;
+
+      final result = _buildLessonResult();
+
+      // ✅ 여기서 세션 결과를 Firestore에 저장
+      // - 저장 실패해도 결과 화면은 보여주는 게 UX가 좋음
+      try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          await _lessonResultsRepo.saveLessonResult(uid: uid, result: result);
+        }
+      } catch (e) {
+        debugPrint("saveLessonResult failed: $e");
+      }
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => LessonResultScreen(
+            result: result,
+            onRestart: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const LessonScreen()),
+              );
+            },
+          ),
+        ),
+      );
+    };
+    _runner.isCompleted.addListener(_completeListener!);
+
+    // ✅ LessonScreen은 BLE 타입 몰라도 됨: bool로만 감지
+    _prevConnected = BleMidiManager.I.isConnected;
+    BleMidiManager.I.connectionState.addListener(_onBleConnChanged);
+
     _initSoundFont().then((_) {
       if (!mounted) return;
       _startNewLesson();
     });
+  }
+
+  @override
+  void dispose() {
+    _detachBleInput();
+    BleMidiManager.I.connectionState.removeListener(_onBleConnChanged);
+
+    if (_completeListener != null) {
+      _runner.isCompleted.removeListener(_completeListener!);
+    }
+
+    _runner.dispose();
+    super.dispose();
+  }
+
+  // ===== BLE 연결 변화 처리 (bool 기반) =====
+  void _onBleConnChanged() {
+    final isConnected = BleMidiManager.I.isConnected;
+    final wasConnected = _prevConnected;
+
+    _prevConnected = isConnected;
+
+    // disconnected -> connected 순간: 입력 모드 선택 메뉴 오픈
+    if (!wasConnected && isConnected) {
+      if (_openedModeSheetOnce) return; // 세션당 1회만(원하면 삭제)
+      _openedModeSheetOnce = true;
+
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (!mounted) return;
+        _showInputModeSheet();
+      });
+    }
+
+    // connected -> disconnected 순간: BLE 입력 모드였다면 자동 복귀
+    if (wasConnected && !isConnected && _useBleInput) {
+      setState(() => _useBleInput = false);
+      _detachBleInput();
+      _showToast("연결이 끊겨 터치 입력으로 전환됐어요", wrong: true);
+    }
+  }
+
+  void _showInputModeSheet() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        bool temp = _useBleInput;
+
+        return StatefulBuilder(
+          builder: (context, setSheet) {
+            final connected = BleMidiManager.I.isConnected;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "입력 모드 선택",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(connected ? "기기가 연결됐어요. 어떤 방식으로 연습할까요?" : "연결 상태가 아니에요."),
+                  const SizedBox(height: 12),
+                  RadioListTile<bool>(
+                    title: const Text("터치(화면 피아노)"),
+                    value: false,
+                    groupValue: temp,
+                    onChanged: (v) => setSheet(() => temp = v!),
+                  ),
+                  RadioListTile<bool>(
+                    title: const Text("BLE(실제 피아노)"),
+                    subtitle: Text(connected ? "연결됨" : "연결 필요"),
+                    value: true,
+                    groupValue: temp,
+                    onChanged: connected ? (v) => setSheet(() => temp = v!) : null,
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _applyInputMode(temp);
+                      },
+                      child: const Text("확인"),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _applyInputMode(bool useBle) {
+    final connected = BleMidiManager.I.isConnected;
+
+    if (useBle && !connected) {
+      _showToast("BLE가 연결되지 않았어요. 터치 모드로 진행할게요.", wrong: true);
+      setState(() => _useBleInput = false);
+      _detachBleInput();
+      return;
+    }
+
+    setState(() => _useBleInput = useBle);
+
+    if (useBle) {
+      _attachBleInput();
+      _showToast("BLE 입력 모드로 전환!", wrong: false);
+    } else {
+      _detachBleInput();
+      _showToast("터치 입력 모드로 전환!", wrong: false);
+    }
+  }
+
+  void _attachBleInput() {
+    _detachBleInput();
+
+    try {
+      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+      BleMidiManager.I.startListening();
+
+      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+      _bleOnSub = BleMidiManager.I.noteOnStream.listen((midi) async {
+        await _handleNoteOn(midi, velocity: 110);
+      });
+
+      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+      _bleOffSub = BleMidiManager.I.noteOffStream.listen((midi) {
+        _handleNoteOff(midi);
+      });
+    } catch (_) {
+      // 수신 기능이 아직 없거나 구현 중이면:
+      // BLE 모드 선택은 가능하지만 입력은 들어오지 않음
+    }
+  }
+
+  void _detachBleInput() {
+    _bleOnSub?.cancel();
+    _bleOnSub = null;
+    _bleOffSub?.cancel();
+    _bleOffSub = null;
+
+    try {
+      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+      BleMidiManager.I.stopListening();
+    } catch (_) {}
   }
 
   Future<void> _initSoundFont() async {
@@ -81,15 +303,7 @@ class _LessonScreenState extends State<LessonScreen> {
     }
   }
 
-  /// ✅ 진행도 기반 정책:
-  /// - 1~N회차: sharp 기반 (#)
-  /// - 그 이후: flat 기반 (♭)
-  ///
-  /// 나중에 ProgressState/Generator에서 “조성”이나 “표기정책”을 직접 내려주면
-  /// 이 함수만 그 값으로 교체하면 됨.
   AccidentalStyle _styleFromProgress() {
-    // 예: 6번째 레슨부터 ♭ 도입
-    // (너 취향에 맞게 숫자만 바꾸면 됨)
     return (_lessonSerial >= 6) ? AccidentalStyle.flat : AccidentalStyle.sharp;
   }
 
@@ -107,12 +321,16 @@ class _LessonScreenState extends State<LessonScreen> {
       ),
     );
 
-    // ✅ notePool로 화면 범위 자동 설정(1옥타브)
-    final pool = lesson.notePool;
-    _minMidi = pool.reduce((a, b) => a < b ? a : b);
-    _maxMidi = pool.reduce((a, b) => a > b ? a : b);
+    // ✅ 화면 키보드 범위는 항상 1옥타브로 고정
+    final baseC = 60 + (12 * _progress.octaveIndex); // C4 기준 + 옥타브 이동
+    _minMidi = baseC; // C
+    _maxMidi = baseC + 11; // B
 
     _runner.start(lesson);
+
+    // ✅ 결과용 시작 시각 + 이동 플래그 리셋
+    _lessonStartedAt = DateTime.now();
+    _navigatingToResult = false;
 
     // UI 상태 리셋
     _toastText = null;
@@ -120,6 +338,35 @@ class _LessonScreenState extends State<LessonScreen> {
     _hintPulseOn = false;
 
     setState(() {});
+  }
+
+  LessonResult _buildLessonResult() {
+    final started = _lessonStartedAt ?? DateTime.now();
+    final finished = DateTime.now();
+
+    int correct = 0;
+    int wrong = 0;
+    final wrongByMidi = <int, int>{};
+
+    _progress.stats.forEach((midi, ns) {
+      correct += ns.success;
+      wrong += ns.fail;
+      if (ns.fail > 0) wrongByMidi[midi] = ns.fail;
+    });
+
+    final total = correct + wrong;
+    final acc = total == 0 ? 0.0 : (correct / total);
+
+    return LessonResult(
+      startedAt: started,
+      finishedAt: finished,
+      total: total,
+      correct: correct,
+      wrong: wrong,
+      accuracy: acc,
+      newNotes: List<int>.from(_progress.lastNewNotes),
+      wrongByMidi: wrongByMidi,
+    );
   }
 
   void _play(int midi, {int velocity = 110}) {
@@ -167,7 +414,6 @@ class _LessonScreenState extends State<LessonScreen> {
     });
   }
 
-  /// ✅ 2회 이상 오답 시, 정답 건반을 "깜빡이게" 해서 힌트
   Future<void> _pulseHint() async {
     if (!mounted) return;
     for (int i = 0; i < 2; i++) {
@@ -180,7 +426,6 @@ class _LessonScreenState extends State<LessonScreen> {
     }
   }
 
-  /// 현재 태스크의 steps를 가져온다 (ORDERED / RANDOM)
   List<StepItem> _currentTaskSteps() {
     final lesson = _runner.lesson;
     final taskId = _runner.currentTaskId;
@@ -202,7 +447,6 @@ class _LessonScreenState extends State<LessonScreen> {
     return idx;
   }
 
-  /// ✅ 토스트(팝업 느낌) 오버레이
   Widget _buildToastOverlay({required bool isTablet}) {
     if (_toastText == null) return const SizedBox.shrink();
 
@@ -235,8 +479,6 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  /// ✅ 상단: 안내 문구 + 악보(오선/음표/현재 화살표)
-  /// - 이전/처음으로 같은 버튼 없음
   Widget _buildSheetCard({required bool isTablet}) {
     return ValueListenableBuilder(
       valueListenable: _runner.currentStep,
@@ -257,13 +499,32 @@ class _LessonScreenState extends State<LessonScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "아래 음을 연주해보세요 ▼",
-                style: TextStyle(
-                  fontSize: isTablet ? 26 : 22,
-                  fontWeight: FontWeight.w900,
-                  color: _flashWrong ? Colors.white : Colors.black,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "아래 음을 연주해보세요 ▼",
+                      style: TextStyle(
+                        fontSize: isTablet ? 26 : 22,
+                        fontWeight: FontWeight.w900,
+                        color: _flashWrong ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+
+                  // ✅ 연결돼 있을 때만 “현재 입력 모드” 버튼 노출
+                  ValueListenableBuilder(
+                    valueListenable: BleMidiManager.I.connectionState,
+                    builder: (context, _, __) {
+                      final connected = BleMidiManager.I.isConnected;
+                      if (!connected) return const SizedBox.shrink();
+                      return TextButton(
+                        onPressed: _showInputModeSheet,
+                        child: Text(_useBleInput ? "BLE 입력" : "터치 입력"),
+                      );
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               Container(
@@ -284,7 +545,7 @@ class _LessonScreenState extends State<LessonScreen> {
                       midiNotes: notes,
                       currentIndex: idx,
                       done: done,
-                      accidentalStyle: _accidentalStyle, // ✅ 진행도 기반 #/♭ 전환
+                      accidentalStyle: _accidentalStyle,
                     ),
                   ),
                 ),
@@ -296,6 +557,32 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
+  Future<void> _handleNoteOn(int midi, {required int velocity}) async {
+    _play(midi, velocity: velocity);
+    setState(() => _pressedNotes.add(midi));
+
+    _runner.onNoteOn(midi);
+
+    if (_runner.lastHit.value == false) {
+      _playWrongBeep();
+      _showWrongFlash();
+
+      if (_runner.wrongCountOnStep.value >= 2) {
+        await _pulseHint();
+        _showToast("힌트가 나왔어요", wrong: true);
+      } else {
+        _showToast("틀렸어요! 다시 해볼까요?", wrong: true);
+      }
+    }
+
+    setState(() {});
+  }
+
+  void _handleNoteOff(int midi) {
+    _stop(midi);
+    setState(() => _pressedNotes.remove(midi));
+  }
+
   Widget _buildKeyboardArea({required bool isTablet}) {
     return ValueListenableBuilder(
       valueListenable: _runner.wrongCountOnStep,
@@ -304,53 +591,32 @@ class _LessonScreenState extends State<LessonScreen> {
         final targetSet = (step == null) ? <int>{} : _runner.highlightedNotes();
 
         final bool showHint = wrongCount >= 2;
-
         final highlighted = showHint ? (_hintPulseOn ? targetSet : <int>{}) : targetSet;
 
         return Expanded(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
-                child: PianoKeyboard(
-                  minMidi: _minMidi,
-                  maxMidi: _maxMidi,
-                  pressedNotes: _pressedNotes,
-                  highlightedNotes: highlighted,
-                  onNoteOn: (midi, velocity) async {
-                    _play(midi, velocity: velocity);
-                    setState(() => _pressedNotes.add(midi));
-
-                    _runner.onNoteOn(midi);
-
-                    if (_runner.lastHit.value == false) {
-                      _playWrongBeep();
-                      _showWrongFlash();
-
-                      if (_runner.wrongCountOnStep.value >= 2) {
-                        await _pulseHint();
-                        _showToast("힌트가 나왔어요", wrong: true);
-                      } else {
-                        _showToast("틀렸어요! 다시 해볼까요?", wrong: true);
-                      }
-                    }
-
-                    setState(() {});
-                  },
-                  onNoteOff: (midi) {
-                    _stop(midi);
-                    setState(() => _pressedNotes.remove(midi));
-                  },
-                ),
-              );
-            },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+            child: IgnorePointer(
+              ignoring: _useBleInput, // ✅ BLE 모드면 터치 입력 잠금
+              child: PianoKeyboard(
+                minMidi: _minMidi,
+                maxMidi: _maxMidi,
+                pressedNotes: _pressedNotes,
+                highlightedNotes: highlighted,
+                onNoteOn: (midi, velocity) async {
+                  await _handleNoteOn(midi, velocity: velocity);
+                },
+                onNoteOff: (midi) {
+                  _handleNoteOff(midi);
+                },
+              ),
+            ),
           ),
         );
       },
     );
   }
 
-  /// ✅ 가로/세로 공통: 상단 악보 + 피아노(화면 대부분)
   Widget _buildLessonLayout({required bool isTablet}) {
     return Column(
       children: [
@@ -361,18 +627,12 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   @override
-  void dispose() {
-    _runner.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
     final isTablet = shortestSide >= 600;
 
     return Scaffold(
-      appBar: null, // ✅ AppBar 제거
+      appBar: null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : (_sfId == null)
@@ -398,9 +658,6 @@ class _LessonScreenState extends State<LessonScreen> {
 }
 
 /// ✅ 악보(오선+음표+현재 화살표) 렌더링
-/// - 위치(y)는 “자연음” 기준
-/// - 흑건반은 ♯ 또는 ♭를 음표 왼쪽에 표시
-/// - ♭일 때는 “바로 위 자연음(예: Bb는 B가 아니라 A 위치 + ♭)”에 붙여 표기
 class _SimpleStaffPainter extends CustomPainter {
   final List<int> midiNotes;
   final int currentIndex;
@@ -422,16 +679,13 @@ class _SimpleStaffPainter extends CustomPainter {
     if (naturals.contains(pc)) return pc;
 
     if (accidentalStyle == AccidentalStyle.sharp) {
-      // 아래 자연음으로: C#(1)->C(0)
       final down = (pc - 1) % 12;
       if (naturals.contains(down)) return down;
     } else {
-      // 위 자연음으로: Db(1)->D(2) (표기상 D에 ♭가 붙는 느낌)
       final up = (pc + 1) % 12;
       if (naturals.contains(up)) return up;
     }
 
-    // 안전장치(가장 가까운 자연음)
     int best = naturals.first;
     int bestDist = 99;
     for (final n in naturals) {
@@ -486,7 +740,6 @@ class _SimpleStaffPainter extends CustomPainter {
     final notePaint = Paint()..color = Colors.black;
     final currentPaint = Paint()..color = Colors.blue;
 
-    // 오선 중앙 배치
     final staffHeight = size.height * 0.55;
     final staffTop = (size.height - staffHeight) / 2;
     final lineGap = staffHeight / 4;
@@ -498,7 +751,6 @@ class _SimpleStaffPainter extends CustomPainter {
       canvas.drawLine(Offset(staffLeft, y), Offset(staffRight, y), staffPaint);
     }
 
-    // 클레프
     final clefPainter = TextPainter(
       text: const TextSpan(
         text: "𝄞",
@@ -544,13 +796,11 @@ class _SimpleStaffPainter extends CustomPainter {
 
       final r = isCurrent ? 10.0 : 8.0;
 
-      // 흑건반이면 ♯/♭ 기호 표시
       final pc = midi % 12;
       if (_needsAccidental(pc)) {
         accTP.paint(canvas, Offset(x - (r * 2.2) - 8, y - 12));
       }
 
-      // 음표 본체
       if (!isCompleted && !isCurrent) {
         final outline = Paint()
           ..style = PaintingStyle.stroke
@@ -567,7 +817,6 @@ class _SimpleStaffPainter extends CustomPainter {
         );
       }
 
-      // 현재 위치 화살표(▼)
       if (isCurrent) {
         final arrowPaint = Paint()..color = Colors.blue;
         final ay = staffTop - 8;

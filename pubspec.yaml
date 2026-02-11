@@ -40,6 +40,8 @@ dependencies:
   flutter_midi_pro: ^3.1.6
   path_provider: ^2.1.4
   flutter_reactive_ble: ^5.4.0
+  flutter_tts: ^3.8.5
+  cloud_firestore: ^6.1.2
 
 dev_dependencies:
   flutter_test:

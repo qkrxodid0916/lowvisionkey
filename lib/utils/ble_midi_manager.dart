@@ -21,7 +21,8 @@ class BleMidiManager {
   ValueNotifier(DeviceConnectionState.disconnected);
 
   String? get deviceId => _deviceId;
-  bool get isConnected => connectionState.value == DeviceConnectionState.connected;
+  bool get isConnected =>
+      connectionState.value == DeviceConnectionState.connected;
 
   QualifiedCharacteristic? get _qc {
     final id = _deviceId;
@@ -32,6 +33,17 @@ class BleMidiManager {
       characteristicId: midiChar,
     );
   }
+
+  // ===== 수신 스트림 =====
+  final StreamController<int> _noteOnCtrl =
+  StreamController<int>.broadcast();
+  final StreamController<int> _noteOffCtrl =
+  StreamController<int>.broadcast();
+
+  Stream<int> get noteOnStream => _noteOnCtrl.stream;
+  Stream<int> get noteOffStream => _noteOffCtrl.stream;
+
+  StreamSubscription<List<int>>? _notifySub;
 
   Future<void> connect(String deviceId) async {
     // 이미 같은 기기 연결 중/연결됨이면 무시
@@ -55,18 +67,20 @@ class BleMidiManager {
           (u) {
         connectionState.value = u.connectionState;
         if (u.connectionState == DeviceConnectionState.disconnected) {
-          // 끊기면 deviceId는 유지해도 되지만, 여기선 깔끔하게 비움
           _deviceId = null;
+          stopListening();
         }
       },
       onError: (_) {
         connectionState.value = DeviceConnectionState.disconnected;
         _deviceId = null;
+        stopListening();
       },
     );
   }
 
   Future<void> disconnect() async {
+    await stopListening();
     await _connSub?.cancel();
     _connSub = null;
     _deviceId = null;
@@ -77,7 +91,7 @@ class BleMidiManager {
   List<int> _wrapBleMidi(List<int> midiBytes) {
     final ts = DateTime.now().millisecondsSinceEpoch % 8192; // 13-bit timestamp
     final header1 = 0x80 | ((ts >> 7) & 0x3F); // 0b10xxxxxx
-    final header2 = 0x80 | (ts & 0x7F);        // 0b1xxxxxxx
+    final header2 = 0x80 | (ts & 0x7F); // 0b1xxxxxxx
     return <int>[header1, header2, ...midiBytes];
   }
 
@@ -85,14 +99,14 @@ class BleMidiManager {
     final qc = _qc;
     if (qc == null || !isConnected) return;
 
-    // Write Without Response
     await _ble.writeCharacteristicWithoutResponse(
       qc,
       value: bleMidiPacket,
     );
   }
 
-  Future<void> sendNoteOn(int midiNote, {int velocity = 110, int channel = 0}) async {
+  Future<void> sendNoteOn(int midiNote,
+      {int velocity = 110, int channel = 0}) async {
     if (midiNote < 0 || midiNote > 127) return;
     velocity = velocity.clamp(0, 127);
     channel = channel.clamp(0, 15);
@@ -110,5 +124,134 @@ class BleMidiManager {
     final status = 0x90 | channel;
     final msg = <int>[status, midiNote, 0];
     await _write(_wrapBleMidi(msg));
+  }
+
+  // ===== 수신 시작/중지 =====
+
+  Future<void> startListening() async {
+    if (!isConnected) return;
+    final qc = _qc;
+    if (qc == null) return;
+
+    // 이미 구독 중이면 무시
+    if (_notifySub != null) return;
+
+    _notifySub = _ble.subscribeToCharacteristic(qc).listen(
+      _handleBleMidiPacket,
+      onError: (e) {
+        debugPrint('BLE MIDI subscribe error: $e');
+      },
+    );
+  }
+
+  Future<void> stopListening() async {
+    await _notifySub?.cancel();
+    _notifySub = null;
+  }
+
+  // ===== BLE-MIDI 파싱 (NoteOn/NoteOff만) =====
+
+  void _handleBleMidiPacket(List<int> value) {
+    if (value.isEmpty) return;
+
+    // 일반적으로 앞 2바이트는 timestamp header
+    int i = 0;
+    if (value.length >= 2 && (value[0] & 0x80) != 0 && (value[1] & 0x80) != 0) {
+      i = 2;
+    }
+
+    int? runningStatus;
+
+    while (i < value.length) {
+      final b = value[i];
+
+      // 후보 status (MSB=1)
+      if ((b & 0x80) != 0) {
+        final status = b;
+        final dataLen = _dataLenForStatus(status);
+
+        // 유효한 status인지 검증: 뒤 data bytes가 <0x80 이어야 함
+        if (dataLen != null &&
+            i + dataLen < value.length &&
+            _allDataBytes(value, i + 1, dataLen)) {
+          runningStatus = status;
+          _emitIfNoteMessage(status, value.sublist(i + 1, i + 1 + dataLen));
+          i += 1 + dataLen;
+          continue;
+        }
+
+        // 위 조건을 못 맞추면 이 바이트는 timestamp일 가능성이 큼 → skip
+        i += 1;
+        continue;
+      }
+
+      // data byte(러닝 스테이터스)
+      if (runningStatus == null) {
+        i += 1;
+        continue;
+      }
+
+      final dataLen = _dataLenForStatus(runningStatus);
+      if (dataLen == null) {
+        i += 1;
+        continue;
+      }
+
+      if (dataLen == 1) {
+        if (b < 0x80) {
+          _emitIfNoteMessage(runningStatus, [b]);
+        }
+        i += 1;
+        continue;
+      }
+
+      // dataLen == 2
+      if (i + 1 < value.length &&
+          value[i] < 0x80 &&
+          value[i + 1] < 0x80) {
+        _emitIfNoteMessage(runningStatus, [value[i], value[i + 1]]);
+        i += 2;
+        continue;
+      }
+
+      i += 1;
+    }
+  }
+
+  int? _dataLenForStatus(int status) {
+    final type = status & 0xF0;
+    if (type >= 0x80 && type <= 0xE0) {
+      if (type == 0xC0 || type == 0xD0) return 1; // Program/Channel pressure
+      return 2; // Note/CC/Pitch 등
+    }
+    return null; // SysEx 등은 여기선 무시
+  }
+
+  bool _allDataBytes(List<int> v, int start, int len) {
+    for (int k = 0; k < len; k++) {
+      if (v[start + k] >= 0x80) return false;
+    }
+    return true;
+  }
+
+  void _emitIfNoteMessage(int status, List<int> data) {
+    final type = status & 0xF0;
+
+    if (type == 0x90 && data.length >= 2) {
+      final note = data[0];
+      final vel = data[1];
+      if (vel == 0) {
+        _noteOffCtrl.add(note);
+      } else {
+        _noteOnCtrl.add(note);
+      }
+      return;
+    }
+
+    if (type == 0x80 && data.length >= 2) {
+      final note = data[0];
+      _noteOffCtrl.add(note);
+      return;
+    }
   }
 }

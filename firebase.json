@@ -1,1 +1,40 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"lowvision-key","appId":"1:176657075350:android:52edbc66cff09133f986b7","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"lowvision-key","configurations":{"android":"1:176657075350:android:52edbc66cff09133f986b7","ios":"1:176657075350:ios:06ed4e4e47037deaf986b7"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "lowvision-key",
+          "appId": "1:176657075350:android:52edbc66cff09133f986b7",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "lowvision-key",
+          "configurations": {
+            "android": "1:176657075350:android:52edbc66cff09133f986b7",
+            "ios": "1:176657075350:ios:06ed4e4e47037deaf986b7"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+}
