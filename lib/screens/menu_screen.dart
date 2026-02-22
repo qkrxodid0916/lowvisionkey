@@ -3,6 +3,7 @@ import 'ble_scan_screen.dart';
 import '../function/piano_screen.dart';
 import 'lesson_screen.dart';
 import 'settings_screen.dart';
+import '../report/screens/report_screen.dart'; // ✅ 추가
 
 class MenuScreen extends StatefulWidget {
   final double fontSize;
@@ -15,7 +16,12 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   // 버튼 만드는 함수
-  Widget buildMenuButton(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget buildMenuButton(
+      String title,
+      IconData icon,
+      Color color,
+      VoidCallback onTap,
+      ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: SizedBox(
@@ -35,6 +41,37 @@ class _MenuScreenState extends State<MenuScreen> {
             style: TextStyle(fontSize: widget.fontSize, fontWeight: FontWeight.bold),
           ),
           onPressed: onTap,
+        ),
+      ),
+    );
+  }
+
+  // BLE 연결 버튼도 위 버튼들과 스타일 통일하고 싶어서 분리(원하면 그대로 둬도 됨)
+  Widget buildBleButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: SizedBox(
+        width: double.infinity,
+        height: 90,
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            side: const BorderSide(color: Colors.orange, width: 3),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            elevation: 5,
+          ),
+          icon: Icon(Icons.bluetooth, size: widget.fontSize + 10, color: Colors.orange),
+          label: Text(
+            "BLE 연결",
+            style: TextStyle(fontSize: widget.fontSize, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BleScanScreen()),
+            );
+          },
         ),
       ),
     );
@@ -95,25 +132,20 @@ class _MenuScreenState extends State<MenuScreen> {
               );
             }),
 
-            SizedBox(
-              width: double.infinity,
-              height: 90,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const BleScanScreen()),
-                  );
-                },
-                child: Text(
-                  "BLE 연결",
-                  style: TextStyle(
-                    fontSize: widget.fontSize,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+            const SizedBox(height: 20),
+
+            // ✅ 리포트 버튼 추가
+            buildMenuButton("📊 리포트 보기", Icons.bar_chart, Colors.purple, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportScreen()),
+              );
+            }),
+
+            const SizedBox(height: 20),
+
+            // ✅ BLE 버튼(기존 버튼 스타일과 통일)
+            buildBleButton(),
           ],
         ),
       ),

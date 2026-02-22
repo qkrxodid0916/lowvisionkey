@@ -6,7 +6,6 @@ import 'package:flutter_midi_pro/flutter_midi_pro.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// ✅ 추가: 저장 레포지토리 (경로는 네 프로젝트 구조에 맞춰둔 기준)
 import '../data/lesson_results_repository.dart';
 
 import '../widgets/piano_keyboard.dart';
