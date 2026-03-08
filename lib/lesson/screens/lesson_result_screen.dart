@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../lesson/lesson_result.dart';
-import '../function/result_uploader.dart';
+import '../models/lesson_result.dart';
+import '../../function/result_uploader.dart';
 
 class LessonResultScreen extends StatefulWidget {
   final LessonResult result;

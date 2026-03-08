@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../report/repositories/report_repository.dart';
+import 'package:lowvision_key/settings/screens/font_selection_screen.dart';
+import '../../report/repositories/report_repository.dart';
 
 enum _ExistingAccountAction { cancel, useExisting, chooseAnother }
 
 class SettingsScreen extends StatefulWidget {
-  final double fontSize;
-  const SettingsScreen({super.key, required this.fontSize});
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -37,8 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _working = true);
     try {
-      final reportId =
-      await _reportRepo.generateLast7DaysLessonWeeklyReport(uid: uid);
+      final reportId = await _reportRepo.generateLast7DaysLessonWeeklyReport(uid: uid);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("주간 리포트 생성 완료: $reportId")),
@@ -77,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<_ExistingAccountAction> _showAlreadyExistsDialog() async {
-    final fs = widget.fontSize;
+    const fs = 30.0; // base 크기 (전역 textScaler가 최종 확대)
 
     final result = await showDialog<_ExistingAccountAction>(
       context: context,
@@ -92,18 +90,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.pop(ctx, _ExistingAccountAction.cancel),
+            onPressed: () => Navigator.pop(ctx, _ExistingAccountAction.cancel),
             child: Text("취소", style: TextStyle(fontSize: fs * 0.6)),
           ),
           TextButton(
-            onPressed: () =>
-                Navigator.pop(ctx, _ExistingAccountAction.chooseAnother),
+            onPressed: () => Navigator.pop(ctx, _ExistingAccountAction.chooseAnother),
             child: Text("다른 계정", style: TextStyle(fontSize: fs * 0.6)),
           ),
           ElevatedButton(
-            onPressed: () =>
-                Navigator.pop(ctx, _ExistingAccountAction.useExisting),
+            onPressed: () => Navigator.pop(ctx, _ExistingAccountAction.useExisting),
             child: Text("기존 계정 사용", style: TextStyle(fontSize: fs * 0.6)),
           ),
         ],
@@ -194,22 +189,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _openFontScaleSetting() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const FontSelectionScreen(fromSettings: true),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final fs = widget.fontSize;
-    final user = _user;
+    const fs = 30.0; // base 크기 (전역 textScaler가 최종 확대)
 
+    final user = _user;
     final isGuest = _isGuest;
+
     final titleText = isGuest ? "게스트(체험판) 계정" : "로그인 계정";
     final subtitleText =
     isGuest ? "로그인 없이 기능을 체험할 수 있어요." : "데이터가 계정에 안전하게 저장됩니다.";
-    final accountText = isGuest ? "이메일 정보 없음" : (user?.email ?? "이메일 정보 없음");
+    final accountText =
+    isGuest ? "이메일 정보 없음" : (user?.email ?? "이메일 정보 없음");
 
     final uid = user?.uid;
 
     return Scaffold(
       appBar: AppBar(title: const Text("설정")),
-
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 10, 16, 16),
         child: SizedBox(
@@ -221,7 +226,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-
       body: uid == null
           ? const Center(child: Text("로그인이 필요해요"))
           : Stack(
@@ -229,6 +233,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
             children: [
+              // ✅ 글씨 크기 조절 메뉴
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                  boxShadow: const [
+                    BoxShadow(
+                      blurRadius: 14,
+                      offset: Offset(0, 8),
+                      color: Color(0x14000000),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.text_fields),
+                  title: Text(
+                    "글씨 크기 조절",
+                    style: TextStyle(
+                      fontSize: fs * 0.70,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  subtitle: Text(
+                    "화면 글씨 크기를 다시 설정합니다.",
+                    style: TextStyle(
+                      fontSize: fs * 0.52,
+                      color: const Color(0xFF6B7280),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 18),
+                  onTap: _working ? null : _openFontScaleSetting,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ✅ 계정 카드
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -246,34 +291,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("계정",
-                        style: TextStyle(
-                            fontSize: fs * 0.85,
-                            fontWeight: FontWeight.w900)),
+                    Text(
+                      "계정",
+                      style: TextStyle(
+                        fontSize: fs * 0.85,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text(titleText,
-                        style: TextStyle(
-                            fontSize: fs * 0.55,
-                            color: const Color(0xFF6B7280),
-                            fontWeight: FontWeight.w700)),
+                    Text(
+                      titleText,
+                      style: TextStyle(
+                        fontSize: fs * 0.55,
+                        color: const Color(0xFF6B7280),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 10),
-                    Text(subtitleText,
-                        style: TextStyle(
-                            fontSize: fs * 0.55,
-                            color: const Color(0xFF374151),
-                            fontWeight: FontWeight.w600)),
+                    Text(
+                      subtitleText,
+                      style: TextStyle(
+                        fontSize: fs * 0.55,
+                        color: const Color(0xFF374151),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    Text("현재 계정",
-                        style: TextStyle(
-                            fontSize: fs * 0.5,
-                            color: const Color(0xFF6B7280))),
+                    Text(
+                      "현재 계정",
+                      style: TextStyle(
+                        fontSize: fs * 0.5,
+                        color: const Color(0xFF6B7280),
+                      ),
+                    ),
                     const SizedBox(height: 6),
-                    Text(accountText,
-                        style: TextStyle(
-                            fontSize: fs * 0.62,
-                            fontWeight: FontWeight.w800)),
+                    Text(
+                      accountText,
+                      style: TextStyle(
+                        fontSize: fs * 0.62,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-
                     if (isGuest) ...[
                       Container(
                         width: double.infinity,
@@ -281,8 +340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: const Color(0xFFBFDBFE)),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +366,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-
                     Column(
                       children: [
                         if (isGuest) ...[
@@ -319,20 +376,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2563EB),
                                 shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                    BorderRadius.circular(14)),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
                               icon: const Icon(Icons.link,
                                   color: Colors.white),
                               label: Text(
                                 "구글 계정 연결하기",
                                 style: TextStyle(
-                                    fontSize: fs * 0.58,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800),
+                                  fontSize: fs * 0.58,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                              onPressed:
-                              _working ? null : _linkGuestToGoogle,
+                              onPressed: _working ? null : _linkGuestToGoogle,
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -344,17 +401,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFEF4444),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(14)),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
                             icon: const Icon(Icons.logout,
                                 color: Colors.white),
                             label: Text(
                               "로그아웃",
                               style: TextStyle(
-                                  fontSize: fs * 0.58,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800),
+                                fontSize: fs * 0.58,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             onPressed: _working ? null : _signOut,
                           ),
@@ -363,83 +421,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 16),
-
-              Text("디버그 / 저장 확인",
-                  style: TextStyle(
-                      fontSize: fs * 0.78,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Text("최근 레슨 결과가 Firestore에 저장되는지 확인합니다.",
-                  style: TextStyle(
-                      fontSize: fs * 0.52,
-                      color: const Color(0xFF6B7280))),
-              const SizedBox(height: 10),
-
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection('lesson_results')
-                    .doc(uid)
-                    .collection('sessions')
-                    .orderBy('finishedAt', descending: true)
-                    .limit(20)
-                    .snapshots(),
-                builder: (context, snap) {
-                  if (snap.hasError) return Text("에러: ${snap.error}");
-                  if (!snap.hasData) {
-                    return const Center(
-                        child: CircularProgressIndicator());
-                  }
-
-                  final docs = snap.data!.docs;
-                  if (docs.isEmpty) {
-                    return const Text("저장된 세션이 아직 없어요.");
-                  }
-
-                  return Column(
-                    children: docs.map((d) {
-                      final data = d.data();
-                      final finishedAt =
-                      (data['finishedAt'] as Timestamp?)?.toDate();
-                      final correct =
-                          (data['correct'] as num?)?.toInt() ?? 0;
-                      final wrong = (data['wrong'] as num?)?.toInt() ?? 0;
-                      final acc =
-                          (data['accuracy'] as num?)?.toDouble() ?? 0.0;
-
-                      return Column(
-                        children: [
-                          ListTile(
-                            title: Text(
-                              "정답 $correct / 오답 $wrong  •  ${(acc * 100).toStringAsFixed(1)}%",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700),
-                            ),
-                            subtitle: Text(
-                              finishedAt == null
-                                  ? "finishedAt 없음"
-                                  : "완료: ${finishedAt.toLocal()}",
-                            ),
-                            trailing: Text(d.id.substring(0, 6)),
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text("세션 raw 데이터"),
-                                  content: SingleChildScrollView(
-                                      child: Text(data.toString())),
-                                ),
-                              );
-                            },
-                          ),
-                          const Divider(height: 1),
-                        ],
-                      );
-                    }).toList(),
-                  );
-                },
               ),
             ],
           ),

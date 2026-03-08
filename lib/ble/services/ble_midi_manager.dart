@@ -14,6 +14,15 @@ class BleMidiManager {
   static final Uuid midiChar =
   Uuid.parse('7772E5DB-3868-4112-A1A9-F2669D106BF3');
 
+  /// ✅ 채널 규칙(0-based)
+  /// - 입력(키보드 → ESP32 → 앱): channel 0
+  /// - 가이드(앱 → ESP32): channel 1
+  static const int inputChannel = 0;
+  static const int guideChannel = 1;
+
+  /// ✅ 수신에서 “판정용으로 받을 채널”(기본: inputChannel)
+  int listenChannel = inputChannel;
+
   String? _deviceId;
   StreamSubscription<ConnectionStateUpdate>? _connSub;
 
@@ -35,10 +44,8 @@ class BleMidiManager {
   }
 
   // ===== 수신 스트림 =====
-  final StreamController<int> _noteOnCtrl =
-  StreamController<int>.broadcast();
-  final StreamController<int> _noteOffCtrl =
-  StreamController<int>.broadcast();
+  final StreamController<int> _noteOnCtrl = StreamController<int>.broadcast();
+  final StreamController<int> _noteOffCtrl = StreamController<int>.broadcast();
 
   Stream<int> get noteOnStream => _noteOnCtrl.stream;
   Stream<int> get noteOffStream => _noteOffCtrl.stream;
@@ -105,8 +112,11 @@ class BleMidiManager {
     );
   }
 
-  Future<void> sendNoteOn(int midiNote,
-      {int velocity = 110, int channel = 0}) async {
+  Future<void> sendNoteOn(
+      int midiNote, {
+        int velocity = 110,
+        int channel = 0,
+      }) async {
     if (midiNote < 0 || midiNote > 127) return;
     velocity = velocity.clamp(0, 127);
     channel = channel.clamp(0, 15);
@@ -116,7 +126,10 @@ class BleMidiManager {
     await _write(_wrapBleMidi(msg));
   }
 
-  Future<void> sendNoteOff(int midiNote, {int channel = 0}) async {
+  Future<void> sendNoteOff(
+      int midiNote, {
+        int channel = 0,
+      }) async {
     if (midiNote < 0 || midiNote > 127) return;
     channel = channel.clamp(0, 15);
 
@@ -124,6 +137,41 @@ class BleMidiManager {
     final status = 0x90 | channel;
     final msg = <int>[status, midiNote, 0];
     await _write(_wrapBleMidi(msg));
+  }
+
+  /// ✅ Control Change 전송 (MIDI CC)
+  Future<void> sendControlChange(
+      int controller,
+      int value, {
+        int channel = 0,
+      }) async {
+    controller = controller.clamp(0, 127);
+    value = value.clamp(0, 127);
+    channel = channel.clamp(0, 15);
+
+    final status = 0xB0 | channel;
+    final msg = <int>[status, controller, value];
+    await _write(_wrapBleMidi(msg));
+  }
+
+  /// ✅ 유지보수형 All Notes Off
+  /// - 표준 CC(123/120) 우선
+  /// - ESP32가 CC를 무시하는 경우 fallbackSweep=true로 note-off sweep 추가
+  Future<void> sendAllNotesOff({
+    int channel = 0,
+    bool fallbackSweep = false,
+  }) async {
+    channel = channel.clamp(0, 15);
+
+    // 표준 MIDI CC
+    await sendControlChange(123, 0, channel: channel); // All Notes Off
+    await sendControlChange(120, 0, channel: channel); // All Sound Off
+
+    if (!fallbackSweep) return;
+
+    for (int m = 0; m < 128; m++) {
+      unawaited(sendNoteOff(m, channel: channel));
+    }
   }
 
   // ===== 수신 시작/중지 =====
@@ -156,7 +204,9 @@ class BleMidiManager {
 
     // 일반적으로 앞 2바이트는 timestamp header
     int i = 0;
-    if (value.length >= 2 && (value[0] & 0x80) != 0 && (value[1] & 0x80) != 0) {
+    if (value.length >= 2 &&
+        (value[0] & 0x80) != 0 &&
+        (value[1] & 0x80) != 0) {
       i = 2;
     }
 
@@ -236,6 +286,10 @@ class BleMidiManager {
 
   void _emitIfNoteMessage(int status, List<int> data) {
     final type = status & 0xF0;
+    final ch = status & 0x0F;
+
+    // ✅ “입력 채널”만 noteOn/off 스트림으로 내보냄
+    if (ch != listenChannel) return;
 
     if (type == 0x90 && data.length >= 2) {
       final note = data[0];

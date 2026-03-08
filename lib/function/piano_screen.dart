@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
-import '../utils/ble_midi_manager.dart';
+import '../ble/services/ble_midi_manager.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 class PianoScreen extends StatefulWidget {
@@ -36,6 +37,19 @@ class _PianoScreenState extends State<PianoScreen> {
   void initState() {
     super.initState();
     _initSoundFont();
+  }
+
+  @override
+  void dispose() {
+    // ✅ 안전장치: 화면 종료 시 남아있는 노트 정리(지원되는 경우에만)
+    try {
+      // BleMidiManager 쪽에 이런 메서드가 있다면 호출되게끔(없으면 catch로 무시)
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      BleMidiManager.I.sendAllNotesOff(channel: 0);
+    } catch (_) {
+      // no-op: 메서드가 없거나 내부적으로 예외가 나도 화면 dispose는 진행
+    }
+    super.dispose();
   }
 
   Future<void> _initSoundFont() async {
@@ -139,7 +153,11 @@ class _PianoScreenState extends State<PianoScreen> {
           int whiteIndex = 0;
           for (int midi = _minMidi; midi <= _maxMidi; midi++) {
             if (_isBlack(midi)) {
-              blackKeys.add(_BlackKey(midi: midi, leftWhiteIndex: whiteIndex - 1));
+              // ✅ 방어: minMidi가 바뀌어 검은건반으로 시작해도 음수 방지
+              final leftWhiteIndex = (whiteIndex - 1).clamp(0, 1000000);
+              blackKeys.add(
+                _BlackKey(midi: midi, leftWhiteIndex: leftWhiteIndex),
+              );
             } else {
               whiteMidis.add(midi);
               whiteIndex++;
@@ -160,7 +178,8 @@ class _PianoScreenState extends State<PianoScreen> {
                       const SizedBox(width: gap / 2),
                       for (final midi in whiteMidis)
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: gap / 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: gap / 2),
                           child: _WhiteKey(
                             width: w,
                             height: whiteH,
@@ -174,7 +193,8 @@ class _PianoScreenState extends State<PianoScreen> {
                   ),
                   for (final bk in blackKeys)
                     Positioned(
-                      left: (bk.leftWhiteIndex + 1) * whiteStride - (blackW / 2),
+                      left: (bk.leftWhiteIndex + 1) * whiteStride -
+                          (blackW / 2),
                       top: 0,
                       child: _BlackKeyWidget(
                         width: blackW,

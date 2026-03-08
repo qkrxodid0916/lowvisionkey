@@ -1,152 +1,192 @@
 import 'package:flutter/material.dart';
-import 'ble_scan_screen.dart';
-import '../function/piano_screen.dart';
-import 'lesson_screen.dart';
-import 'settings_screen.dart';
-import '../report/screens/report_screen.dart'; // ✅ 추가
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lowvision_key/data/lesson_results_repository.dart';
+import 'package:lowvision_key/utils/header_message.dart';
+import 'package:lowvision_key/lesson/screens/course_levels_screen.dart';
+import 'package:lowvision_key/function/piano_screen.dart';
+import 'package:lowvision_key/settings/screens/settings_screen.dart';
+import 'package:lowvision_key/report/screens/report_screen.dart';
 
 class MenuScreen extends StatefulWidget {
-  final double fontSize;
-
-  const MenuScreen({super.key, required this.fontSize});
+  const MenuScreen({super.key});
 
   @override
   State<MenuScreen> createState() => _MenuScreenState();
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  // 버튼 만드는 함수
-  Widget buildMenuButton(
-      String title,
-      IconData icon,
-      Color color,
-      VoidCallback onTap,
-      ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: SizedBox(
-        width: double.infinity,
-        height: 90,
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            side: BorderSide(color: color, width: 3),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            elevation: 5,
-          ),
-          icon: Icon(icon, size: widget.fontSize + 10, color: color),
-          label: Text(
-            title,
-            style: TextStyle(fontSize: widget.fontSize, fontWeight: FontWeight.bold),
-          ),
-          onPressed: onTap,
-        ),
-      ),
-    );
+  final _repo = LessonResultsRepository();
+
+  Future<String> _loadHeaderText() async {
+    final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
+    final name = user?.displayName;
+
+    if (uid == null) {
+      return HeaderMessageBuilder.build(name: name, streak: 0);
+    }
+
+    final recent = await _repo.fetchRecentResults(uid: uid, limit: 60);
+    final streak = HeaderMessageBuilder.computeStreakKst(recent);
+
+    return HeaderMessageBuilder.build(name: name, streak: streak);
   }
 
-  // BLE 연결 버튼도 위 버튼들과 스타일 통일하고 싶어서 분리(원하면 그대로 둬도 됨)
-  Widget buildBleButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: SizedBox(
-        width: double.infinity,
-        height: 90,
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            side: const BorderSide(color: Colors.orange, width: 3),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            elevation: 5,
-          ),
-          icon: Icon(Icons.bluetooth, size: widget.fontSize + 10, color: Colors.orange),
-          label: Text(
-            "BLE 연결",
-            style: TextStyle(fontSize: widget.fontSize, fontWeight: FontWeight.bold),
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BleScanScreen()),
-            );
-          },
-        ),
-      ),
+  void _go(Widget page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ base 크기만 유지 (전역 textScaler가 알아서 확대/축소)
+    const fs = 30.0;
+
+    // 기존 “44/28/34 느낌” 비율 유지
+    final headerBig = fs * 1.47;
+    final headerSmall = fs * 0.93;
+    final cardTitle = fs * 1.13;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 10),
-            child: IconButton(
-              icon: Icon(Icons.settings, color: Colors.black, size: widget.fontSize + 10),
-              tooltip: '설정',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SettingsScreen(fontSize: widget.fontSize),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: FutureBuilder<String>(
+                      future: _loadHeaderText(),
+                      builder: (context, snap) {
+                        final text = snap.data ?? "불러오는 중…";
+                        final lines = text.split("\n");
+                        final line1 = lines.isNotEmpty ? lines[0] : text;
+                        final line2 = lines.length >= 2 ? lines[1] : "";
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              line1,
+                              style: TextStyle(
+                                fontSize: headerBig,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              line2,
+                              style: TextStyle(
+                                fontSize: headerSmall,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
+                  IconButton(
+                    icon: Icon(Icons.settings, size: fs * 1.2),
+                    onPressed: () => _go(const SettingsScreen()),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 24,
+                  mainAxisSpacing: 24,
+                  childAspectRatio: 1.25,
+                  children: [
+                    _menuCard(
+                      "수업 시작하기",
+                      Icons.school,
+                      Colors.blue,
+                      cardTitle,
+                          () => _go(const CourseLevelsScreen()),
+                    ),
+                    _menuCard(
+                      "자유 연주",
+                      Icons.music_note,
+                      Colors.green,
+                      cardTitle,
+                          () => _go(const PianoScreen()),
+                    ),
+                    _menuCard(
+                      "리포트 보기",
+                      Icons.bar_chart,
+                      Colors.purple,
+                      cardTitle,
+                          () => _go(const ReportScreen()),
+                    ),
+                    _menuCard(
+                      "설정",
+                      Icons.settings,
+                      Colors.orange,
+                      cardTitle,
+                          () => _go(const SettingsScreen()),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menuCard(
+      String title,
+      IconData icon,
+      Color color,
+      double titleSize,
+      VoidCallback onTap,
+      ) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: color, width: 4),
+            boxShadow: const [
+              BoxShadow(
+                blurRadius: 12,
+                offset: Offset(0, 6),
+                color: Color(0x22000000),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: titleSize * 1.8, color: color),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              "안녕하세요!\n무엇을 하시겠습니까?",
-              style: TextStyle(fontSize: widget.fontSize, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 50),
-
-            buildMenuButton("🎹 수업 시작하기", Icons.school, Colors.blue, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LessonScreen()),
-              );
-            }),
-
-            const SizedBox(height: 20),
-
-            buildMenuButton("🎵 자유 연주", Icons.music_note, Colors.green, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PianoScreen()),
-              );
-            }),
-
-            const SizedBox(height: 20),
-
-            // ✅ 리포트 버튼 추가
-            buildMenuButton("📊 리포트 보기", Icons.bar_chart, Colors.purple, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ReportScreen()),
-              );
-            }),
-
-            const SizedBox(height: 20),
-
-            // ✅ BLE 버튼(기존 버튼 스타일과 통일)
-            buildBleButton(),
-          ],
         ),
       ),
     );

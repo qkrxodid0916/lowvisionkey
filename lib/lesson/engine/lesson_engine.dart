@@ -1,12 +1,19 @@
 import 'package:flutter/foundation.dart';
-import 'lesson_models.dart';
-import 'progress_models.dart';
-import '../utils/tts_service.dart';
+import '../models/lesson_models.dart';
+import '../models/progress_models.dart';
+import '../../utils/tts_service.dart';
 
 class LessonRunner {
   final ProgressState progress;
 
-  LessonRunner({required this.progress});
+  /// ✅ 목표 노트가 바뀔 때(새 step 시작) 외부로 알려주는 훅
+  /// - ESP32 LED 가이드용 신호 송신 등을 여기서 연결
+  final Future<void> Function(Set<int> notes)? onGuideNotesChanged;
+
+  LessonRunner({
+    required this.progress,
+    this.onGuideNotesChanged,
+  });
 
   Lesson? _lesson;
   int _taskIndex = 0;
@@ -66,7 +73,6 @@ class LessonRunner {
       // ✅ 1회: "다시" / 2회 이상: "정답은 ~"
       if (wrongCountOnStep.value >= 2) {
         _tts.speak("정답은 ${_midiToKo(target)}");
-        // 실패 표시 없이 그대로 유지(재시도)
       } else {
         _tts.speak("다시");
       }
@@ -99,6 +105,10 @@ class LessonRunner {
         isCompleted.value = true;
         currentStep.value = null;
         progress.lastNewNotes = List<int>.from(l.newNotes);
+
+        // ✅ 레슨 완료 시 가이드 끄기(빈 셋 전달)
+        onGuideNotesChanged?.call(<int>{});
+
         _tts.speak("레슨 완료");
         return;
       }
@@ -119,6 +129,9 @@ class LessonRunner {
 
     final step = l.tasks[_taskIndex].steps[_stepIndex];
     currentStep.value = step;
+
+    // ✅ 새 step 목표가 정해짐 → 외부(ESP32 등)에 가이드 신호 보낼 기회
+    onGuideNotesChanged?.call(step.targetNotes.toSet());
 
     // ✅ 새 step 목표 안내 (현재는 단음 기준)
     final target = step.targetNotes.first;

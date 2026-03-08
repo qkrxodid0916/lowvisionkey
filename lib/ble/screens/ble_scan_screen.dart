@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
-import '../utils/ble_midi_manager.dart';
+import '../services/ble_midi_manager.dart';
 
 class BleScanScreen extends StatefulWidget {
   const BleScanScreen({super.key});

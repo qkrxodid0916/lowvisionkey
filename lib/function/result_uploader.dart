@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../lesson/lesson_result.dart';
+import '../lesson/models/lesson_result.dart';
 import '../report/repositories/report_repository.dart';
 
 class ResultUploader {
