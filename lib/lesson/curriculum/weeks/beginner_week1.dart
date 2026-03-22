@@ -1,5 +1,3 @@
-// lib/lesson/curriculum/weeks/beginner_week1.dart
-
 import '../curriculum_models.dart';
 
 class BeginnerWeek1 {
@@ -95,7 +93,9 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60], [62], [64],
+              [60],
+              [62],
+              [64],
             ],
             totalQuestions: 5,
           ),
@@ -109,7 +109,8 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [65], [67],
+              [65],
+              [67],
             ],
             totalQuestions: 5,
           ),
@@ -123,7 +124,11 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60], [62], [64], [65], [67],
+              [60],
+              [62],
+              [64],
+              [65],
+              [67],
             ],
             totalQuestions: 10,
           ),
@@ -137,7 +142,11 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60], [62], [64], [65], [67],
+              [60],
+              [62],
+              [64],
+              [65],
+              [67],
             ],
             totalQuestions: 10,
           ),
@@ -163,7 +172,11 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60], [62], [64], [65], [67],
+              [60],
+              [62],
+              [64],
+              [65],
+              [67],
             ],
             totalQuestions: 5,
           ),
@@ -177,7 +190,8 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [69], [71],
+              [69],
+              [71],
             ],
             totalQuestions: 5,
           ),
@@ -191,7 +205,13 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60], [62], [64], [65], [67], [69], [71],
+              [60],
+              [62],
+              [64],
+              [65],
+              [67],
+              [69],
+              [71],
             ],
             totalQuestions: 10,
           ),
@@ -205,7 +225,13 @@ class BeginnerWeek1 {
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60], [62], [64], [65], [67], [69], [71],
+              [60],
+              [62],
+              [64],
+              [65],
+              [67],
+              [69],
+              [71],
             ],
             totalQuestions: 10,
           ),
@@ -224,6 +250,7 @@ class BeginnerWeek1 {
       practiceQuestions: 10,
       checkQuestions: 10,
       minAccuracy: 0.75,
+      shuffleQuestions: false,
     );
   }
 
@@ -235,6 +262,7 @@ class BeginnerWeek1 {
       practiceQuestions: 10,
       checkQuestions: 10,
       minAccuracy: 0.75,
+      shuffleQuestions: true,
     );
   }
 
@@ -246,6 +274,7 @@ class BeginnerWeek1 {
       practiceQuestions: 10,
       checkQuestions: 10,
       minAccuracy: 0.78,
+      shuffleQuestions: true,
     );
   }
 
@@ -265,6 +294,7 @@ class BeginnerWeek1 {
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: 5,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -277,6 +307,7 @@ class BeginnerWeek1 {
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: 5,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -289,6 +320,7 @@ class BeginnerWeek1 {
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: 10,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.75),
           guideEnabled: true,
@@ -301,6 +333,7 @@ class BeginnerWeek1 {
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: 15,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.8),
           guideEnabled: false,
@@ -316,6 +349,7 @@ class BeginnerWeek1 {
     required int practiceQuestions,
     required int checkQuestions,
     required double minAccuracy,
+    bool shuffleQuestions = false,
   }) {
     return CurriculumLesson(
       id: id,
@@ -328,10 +362,11 @@ class BeginnerWeek1 {
           id: '${id}_review',
           title: '복습',
           description: description,
-          plan: const LessonPlan(
+          plan: LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: 5,
+            shuffleQuestions: shuffleQuestions,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -340,10 +375,11 @@ class BeginnerWeek1 {
           id: '${id}_learn',
           title: '학습',
           description: '새로운 음 없이 전체 범위를 다시 익혀요.',
-          plan: const LessonPlan(
+          plan: LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: 5,
+            shuffleQuestions: shuffleQuestions,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -356,6 +392,7 @@ class BeginnerWeek1 {
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: practiceQuestions,
+            shuffleQuestions: shuffleQuestions,
           ),
           passRule: PassRule(minAccuracy: minAccuracy),
           guideEnabled: true,
@@ -368,6 +405,7 @@ class BeginnerWeek1 {
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
             totalQuestions: checkQuestions,
+            shuffleQuestions: shuffleQuestions,
           ),
           passRule: PassRule(minAccuracy: minAccuracy),
           guideEnabled: false,
@@ -377,7 +415,13 @@ class BeginnerWeek1 {
   }
 
   static const List<List<int>> _fullRange = [
-    [60], [62], [64], [65], [67], [69], [71],
+    [60],
+    [62],
+    [64],
+    [65],
+    [67],
+    [69],
+    [71],
   ];
 
   static LessonPlan _dummyPlan() {

@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_midi_command/flutter_midi_command.dart';
+import 'package:lowvision_key/app/dev_settings.dart';
+
 import '../../data/lesson_results_repository.dart';
 import '../../widgets/piano_keyboard.dart';
-import '../../ble/services/ble_midi_manager.dart';
 import 'lesson_result_screen.dart';
-import '../models/lesson_result.dart';
 import '../curriculum/predefined_courses.dart';
 import '../curriculum/curriculum_models.dart';
 import '../engine/abstract_lesson_runner.dart';
-import '../engine/app_lesson_runner.dart';
 import '../engine/ble_lesson_runner.dart';
 import '../progress/course_progress_repository.dart';
 
@@ -42,7 +43,6 @@ class _LessonScreenState extends State<LessonScreen> {
   int? _sfId;
   bool _loading = true;
 
-  // 1주차 기준: 1옥타브 고정
   int _minMidi = 60;
   int _maxMidi = 71;
 
@@ -56,30 +56,26 @@ class _LessonScreenState extends State<LessonScreen> {
   bool _flashWrong = false;
   String? _toastText;
   bool _toastWrong = true;
-
   bool _hintPulseOn = false;
 
   int _lessonSerial = 0;
   AccidentalStyle _accidentalStyle = AccidentalStyle.sharp;
 
-  bool _useBleInput = false;
-  bool _openedModeSheetOnce = false;
-  bool _prevConnected = false;
-
-  StreamSubscription<int>? _bleOnSub;
-  StreamSubscription<int>? _bleOffSub;
+  final MidiCommand _usbMidi = MidiCommand();
+  StreamSubscription<MidiPacket>? _usbSub;
+  MidiDevice? _connectedUsbDevice;
 
   VoidCallback? _completeListener;
   bool _handlingComplete = false;
 
   int _stepIndex = 0;
 
+  late final MidiInputBuffer _inputBuffer;
+  DateTime _acceptInputAfter = DateTime.fromMillisecondsSinceEpoch(0);
+
   Course get _course => _resolveCourse(widget.courseId);
-
   Stage get _stage => _course.stages[widget.stageIndex];
-
   List<LessonPlanStep> get _steps => widget.lesson.effectiveSteps;
-
   LessonPlanStep get _currentStep => _steps[_stepIndex];
 
   bool get _isLearnStep => _currentStep.id.contains('learn');
@@ -96,16 +92,22 @@ class _LessonScreenState extends State<LessonScreen> {
     );
   }
 
-  AbstractLessonRunner _buildRunnerForCurrentStep({required bool useBle}) {
+  AbstractLessonRunner _buildRunnerForCurrentStep() {
     final lesson = _lessonForRunnerFromStep();
-    return useBle ? BleLessonRunner(lesson) : AppLessonRunner(lesson);
+    return BleLessonRunner(lesson);
   }
 
   @override
   void initState() {
     super.initState();
 
-    _runner = _buildRunnerForCurrentStep(useBle: false);
+    _runner = _buildRunnerForCurrentStep();
+
+    _inputBuffer = MidiInputBuffer(
+      onChordReady: (notes) {
+        _submitInput(notes);
+      },
+    );
 
     _completeListener = () async {
       if (!mounted) return;
@@ -118,8 +120,7 @@ class _LessonScreenState extends State<LessonScreen> {
     };
     _runner.isCompleted.addListener(_completeListener!);
 
-    _prevConnected = BleMidiManager.I.isConnected;
-    BleMidiManager.I.connectionState.addListener(_onBleConnChanged);
+    _initUsbMidi();
 
     _initSoundFont().then((_) {
       if (!mounted) return;
@@ -129,8 +130,8 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   void dispose() {
-    _detachBleInput();
-    BleMidiManager.I.connectionState.removeListener(_onBleConnChanged);
+    _disposeUsbMidi();
+    _inputBuffer.dispose();
 
     if (_completeListener != null) {
       _runner.isCompleted.removeListener(_completeListener!);
@@ -140,15 +141,86 @@ class _LessonScreenState extends State<LessonScreen> {
     super.dispose();
   }
 
+  Future<void> _initUsbMidi() async {
+    try {
+      final devices = await _usbMidi.devices;
+
+      if (devices == null || devices.isEmpty) {
+        debugPrint('USB MIDI 장치 없음');
+        return;
+      }
+
+      debugPrint('MIDI devices: ${devices.map((e) => e.name).toList()}');
+
+      _connectedUsbDevice = devices.first;
+      await _usbMidi.connectToDevice(_connectedUsbDevice!);
+
+      await _usbSub?.cancel();
+      _usbSub = _usbMidi.onMidiDataReceived?.listen((packet) {
+        final data = packet.data;
+        if (data == null || data.isEmpty) return;
+
+        final status = data[0] & 0xF0;
+
+        if (status == 0x90 && data.length >= 3) {
+          final midi = data[1];
+          final velocity = data[2];
+
+          if (velocity == 0) {
+            _handleNoteOff(midi);
+          } else {
+            debugPrint('USB MIDI NoteOn: $midi vel=$velocity');
+            _handleNoteOn(midi, velocity: velocity);
+          }
+        }
+
+        if (status == 0x80 && data.length >= 2) {
+          final midi = data[1];
+          debugPrint('USB MIDI NoteOff: $midi');
+          _handleNoteOff(midi);
+        }
+      });
+
+      debugPrint('USB MIDI 연결 완료: ${_connectedUsbDevice?.name}');
+    } catch (e) {
+      debugPrint('USB MIDI 초기화 실패: $e');
+    }
+  }
+
+  Future<void> _disposeUsbMidi() async {
+    await _usbSub?.cancel();
+    _usbSub = null;
+
+    try {
+      if (_connectedUsbDevice != null) {
+        _usbMidi.disconnectDevice(_connectedUsbDevice!);
+      }
+    } catch (e) {
+      debugPrint('USB MIDI 해제 실패: $e');
+    }
+
+    _connectedUsbDevice = null;
+  }
+
+  void _resetInputGate() {
+    _inputBuffer.reset();
+    _acceptInputAfter = DateTime.now().add(const Duration(milliseconds: 80));
+  }
+
   void _startCurrentStep() {
     _lessonSerial += 1;
     _accidentalStyle = _styleFromProgress();
 
-    // 1주차 기준: 한 옥타브 고정
     _minMidi = 60;
     _maxMidi = 71;
 
+    _resetInputGate();
     _runner.start();
+
+    if (_runner is BleLessonRunner) {
+      // ignore: discarded_futures
+      (_runner as BleLessonRunner).resetGuide();
+    }
 
     _toastText = null;
     _flashWrong = false;
@@ -164,32 +236,34 @@ class _LessonScreenState extends State<LessonScreen> {
     final passed = result.accuracy >= stepRule.minAccuracy &&
         (stepRule.maxFails == null || result.wrong <= stepRule.maxFails!);
 
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        await _lessonResultsRepo.saveLessonResult(uid: uid, result: result);
+    if (!DevSettings.disableResultSaving) {
+      try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          await _lessonResultsRepo.saveLessonResult(uid: uid, result: result);
+        }
+      } catch (e) {
+        debugPrint('saveLessonResult failed: $e');
       }
-    } catch (e) {
-      debugPrint('saveLessonResult failed: $e');
-    }
 
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        final isLastStep = _stepIndex == _steps.length - 1;
+      try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          final isLastStep = _stepIndex == _steps.length - 1;
 
-        await _progressRepo.applyResult(
-          uid: uid,
-          courseId: widget.courseId,
-          lessonIndex: _currentLessonLinearIndex(),
-          stepKey: _currentProgressNodeKey(),
-          accuracy: result.accuracy,
-          passed: passed,
-          advanceUnlock: passed && isLastStep,
-        );
+          await _progressRepo.applyResult(
+            uid: uid,
+            courseId: widget.courseId,
+            lessonIndex: _currentLessonLinearIndex(),
+            stepKey: _currentProgressNodeKey(),
+            accuracy: result.accuracy,
+            passed: passed,
+            advanceUnlock: passed && isLastStep,
+          );
+        }
+      } catch (e) {
+        debugPrint('applyResult failed: $e');
       }
-    } catch (e) {
-      debugPrint('applyResult failed: $e');
     }
 
     if (!mounted) return;
@@ -217,167 +291,41 @@ class _LessonScreenState extends State<LessonScreen> {
       return;
     }
 
-    // 1) 같은 lesson 안에 다음 step
     if (_stepIndex + 1 < _steps.length) {
       setState(() {
         _stepIndex += 1;
       });
-      _switchRunner(useBle: _useBleInput, restart: true);
+      _switchRunner(restart: true);
       return;
     }
 
-    // 레슨 완료 후 선택 화면으로 돌아가기
     Navigator.of(context).pop(true);
-    return;
   }
 
-  void _onBleConnChanged() {
-    final isConnected = BleMidiManager.I.isConnected;
-    final wasConnected = _prevConnected;
-
-    _prevConnected = isConnected;
-
-    if (!wasConnected && isConnected) {
-      if (_openedModeSheetOnce) return;
-      _openedModeSheetOnce = true;
-
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (!mounted) return;
-        _showInputModeSheet();
-      });
-    }
-
-    if (wasConnected && !isConnected && _useBleInput) {
-      setState(() => _useBleInput = false);
-      _switchRunner(useBle: false, restart: false);
-      _detachBleInput();
-      _showToast('연결이 끊겨 터치 입력으로 전환됐어요', wrong: true);
-    }
-  }
-
-  void _showInputModeSheet() {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        bool temp = _useBleInput;
-
-        return StatefulBuilder(
-          builder: (context, setSheet) {
-            final connected = BleMidiManager.I.isConnected;
-
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '입력 모드 선택',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(connected ? '기기가 연결됐어요. 어떤 방식으로 연습할까요?' : '연결 상태가 아니에요.'),
-                  const SizedBox(height: 12),
-                  RadioListTile<bool>(
-                    title: const Text('터치(화면 피아노)'),
-                    value: false,
-                    groupValue: temp,
-                    onChanged: (v) => setSheet(() => temp = v!),
-                  ),
-                  RadioListTile<bool>(
-                    title: const Text('BLE(실제 피아노)'),
-                    subtitle: Text(connected ? '연결됨' : '연결 필요'),
-                    value: true,
-                    groupValue: temp,
-                    onChanged: connected ? (v) => setSheet(() => temp = v!) : null,
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _applyInputMode(temp);
-                      },
-                      child: const Text('확인'),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _applyInputMode(bool useBle) {
-    final connected = BleMidiManager.I.isConnected;
-
-    if (useBle && !connected) {
-      _showToast('BLE가 연결되지 않았어요. 터치 모드로 진행할게요.', wrong: true);
-      setState(() => _useBleInput = false);
-      _switchRunner(useBle: false, restart: false);
-      _detachBleInput();
-      return;
-    }
-
-    setState(() => _useBleInput = useBle);
-    _switchRunner(useBle: useBle, restart: false);
-
-    if (useBle) {
-      _attachBleInput();
-      _showToast('BLE 입력 모드로 전환!', wrong: false);
-    } else {
-      _detachBleInput();
-      _showToast('터치 입력 모드로 전환!', wrong: false);
-    }
-  }
-
-  void _switchRunner({required bool useBle, required bool restart}) {
+  void _switchRunner({required bool restart}) {
     if (_completeListener != null) {
       _runner.isCompleted.removeListener(_completeListener!);
     }
-    _runner.dispose();
 
-    _runner = _buildRunnerForCurrentStep(useBle: useBle);
+    _runner.dispose();
+    _runner = _buildRunnerForCurrentStep();
 
     if (_completeListener != null) {
       _runner.isCompleted.addListener(_completeListener!);
     }
 
+    _resetInputGate();
+
     if (restart) {
       _startCurrentStep();
     } else {
       _runner.start();
+      if (_runner is BleLessonRunner) {
+        // ignore: discarded_futures
+        (_runner as BleLessonRunner).resetGuide();
+      }
       setState(() {});
     }
-  }
-
-  void _attachBleInput() {
-    _detachBleInput();
-
-    try {
-      BleMidiManager.I.startListening();
-      _bleOnSub = BleMidiManager.I.noteOnStream.listen((midi) async {
-        await _handleNoteOn(midi, velocity: 110);
-      });
-      _bleOffSub = BleMidiManager.I.noteOffStream.listen((midi) {
-        _handleNoteOff(midi);
-      });
-    } catch (_) {}
-  }
-
-  void _detachBleInput() {
-    _bleOnSub?.cancel();
-    _bleOnSub = null;
-    _bleOffSub?.cancel();
-    _bleOffSub = null;
-
-    try {
-      BleMidiManager.I.stopListening();
-    } catch (_) {}
   }
 
   Future<void> _initSoundFont() async {
@@ -388,7 +336,12 @@ class _LessonScreenState extends State<LessonScreen> {
         program: 0,
       );
 
-      await _midi.selectInstrument(sfId: sfId, channel: 0, bank: 0, program: 0);
+      await _midi.selectInstrument(
+        sfId: sfId,
+        channel: 0,
+        bank: 0,
+        program: 0,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -461,6 +414,48 @@ class _LessonScreenState extends State<LessonScreen> {
       await Future.delayed(const Duration(milliseconds: 140));
       if (!mounted) return;
     }
+  }
+
+  Future<void> _submitInput(List<int> notes) async {
+    if (notes.isEmpty) return;
+    if (_runner.isCompleted.value == true) return;
+
+    _runner.onInput(notes);
+
+    if (_runner.lastHit.value == false) {
+      _playWrongBeep();
+      _showWrongFlash();
+
+      if (_runner.wrongCountOnStep.value >= 2 && _currentStep.guideEnabled) {
+        await _pulseHint();
+        _showToast('힌트가 나왔어요', wrong: true);
+      } else {
+        _showToast('틀렸어요! 다시 해볼까요?', wrong: true);
+      }
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  int _normalizeTouchMidiToExpectedOctave(int playedMidi) {
+    final expected = _runner.currentExpected.value;
+    if (expected == null || expected.isEmpty) return playedMidi;
+
+    final expectedMidi = expected.first;
+
+    if (playedMidi % 12 == expectedMidi % 12) {
+      return expectedMidi;
+    }
+
+    return playedMidi;
+  }
+
+  bool _isChordQuestion() {
+    final expected = _runner.currentExpected.value;
+    if (expected == null) return false;
+    return expected.length > 1;
   }
 
   Widget _buildToastOverlay({required bool isTablet}) {
@@ -571,7 +566,7 @@ class _LessonScreenState extends State<LessonScreen> {
           child: Container(
             width: double.infinity,
             color: _flashWrong ? Colors.red.withOpacity(0.08) : const Color(0xFFF6F8FC),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: _isLearnStep
                 ? _buildAllPromptView(midi: midi, isTablet: isTablet)
                 : _buildSinglePromptView(
@@ -589,49 +584,57 @@ class _LessonScreenState extends State<LessonScreen> {
     required int midi,
     required bool isTablet,
   }) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          _solfegeForMidi(midi),
-          style: TextStyle(
-            fontSize: isTablet ? 82 : 60,
-            fontWeight: FontWeight.w900,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _letterForMidi(midi),
-          style: TextStyle(
-            fontSize: isTablet ? 38 : 28,
-            fontWeight: FontWeight.w800,
-            color: Colors.black54,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          constraints: BoxConstraints(
-            maxWidth: isTablet ? 520 : 360,
-            maxHeight: isTablet ? 140 : 110,
-          ),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.blue, width: 3),
-          ),
-          child: CustomPaint(
-            painter: _SimpleStaffPainter(
-              midiNotes: [midi],
-              currentIndex: 0,
-              done: false,
-              accidentalStyle: _accidentalStyle,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _solfegeForMidi(midi),
+              style: TextStyle(
+                fontSize: isTablet ? 76 : 56,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
             ),
-            size: const Size(double.infinity, double.infinity),
-          ),
-        ),
-      ],
+            const SizedBox(height: 4),
+            Text(
+              _letterForMidi(midi),
+              style: TextStyle(
+                fontSize: isTablet ? 30 : 24,
+                fontWeight: FontWeight.w800,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Flexible(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isTablet ? 520 : 360,
+                    maxHeight: isTablet ? 120 : 95,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.blue, width: 3),
+                  ),
+                  child: CustomPaint(
+                    painter: _SimpleStaffPainter(
+                      midiNotes: [midi],
+                      currentIndex: 0,
+                      done: false,
+                      accidentalStyle: _accidentalStyle,
+                    ),
+                    size: const Size(double.infinity, double.infinity),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -699,26 +702,24 @@ class _LessonScreenState extends State<LessonScreen> {
         final guideOn = _currentStep.guideEnabled;
         final targetSet = guideOn ? _runner.highlightedNotes() : <int>{};
 
-        final bool showHint = guideOn && wrongCount >= 2;
+        final showHint = guideOn && wrongCount >= 2;
         final highlighted = showHint ? (_hintPulseOn ? targetSet : <int>{}) : targetSet;
 
         return Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
-            child: IgnorePointer(
-              ignoring: _useBleInput,
-              child: PianoKeyboard(
-                minMidi: _minMidi,
-                maxMidi: _maxMidi,
-                pressedNotes: _pressedNotes,
-                highlightedNotes: highlighted,
-                onNoteOn: (midi, velocity) async {
-                  await _handleNoteOn(midi, velocity: velocity);
-                },
-                onNoteOff: (midi) {
-                  _handleNoteOff(midi);
-                },
-              ),
+            child: PianoKeyboard(
+              minMidi: _minMidi,
+              maxMidi: _maxMidi,
+              pressedNotes: _pressedNotes,
+              highlightedNotes: highlighted,
+              onNoteOn: (midi, velocity) async {
+                final normalizedMidi = _normalizeTouchMidiToExpectedOctave(midi);
+                await _handleNoteOn(normalizedMidi, velocity: velocity);
+              },
+              onNoteOff: (midi) {
+                _handleNoteOff(midi);
+              },
             ),
           ),
         );
@@ -737,24 +738,21 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   Future<void> _handleNoteOn(int midi, {required int velocity}) async {
+    debugPrint('입력 MIDI: $midi');
+
+    if (DateTime.now().isBefore(_acceptInputAfter)) {
+      return;
+    }
+
     _play(midi, velocity: velocity);
     setState(() => _pressedNotes.add(midi));
 
-    _runner.onInput([midi]);
-
-    if (_runner.lastHit.value == false) {
-      _playWrongBeep();
-      _showWrongFlash();
-
-      if (_runner.wrongCountOnStep.value >= 2 && _currentStep.guideEnabled) {
-        await _pulseHint();
-        _showToast('힌트가 나왔어요', wrong: true);
-      } else {
-        _showToast('틀렸어요! 다시 해볼까요?', wrong: true);
-      }
+    if (_isChordQuestion()) {
+      _inputBuffer.addNote(midi);
+      return;
     }
 
-    setState(() {});
+    await _submitInput([midi]);
   }
 
   void _handleNoteOff(int midi) {
@@ -816,7 +814,6 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   _NextLessonTarget? _findNextLessonTarget() {
-    // 같은 stage 안에서 다음 lesson
     final currentStage = _course.stages[widget.stageIndex];
     final nextLessonIndex = widget.lessonIndex + 1;
 
@@ -828,7 +825,6 @@ class _LessonScreenState extends State<LessonScreen> {
       );
     }
 
-    // 다음 stage 첫 lesson
     final nextStageIndex = widget.stageIndex + 1;
     if (nextStageIndex < _course.stages.length &&
         _course.stages[nextStageIndex].lessons.isNotEmpty) {
@@ -843,7 +839,8 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   _PromptVariant _promptVariantForCurrentQuestion() {
-    final seed = _currentStep.id.hashCode ^ _runner.currentIndex ^ widget.lesson.id.hashCode;
+    final seed =
+    _currentStep.id.hashCode ^ _runner.currentIndex ^ widget.lesson.id.hashCode;
     final random = Random(seed);
     return _PromptVariant.values[random.nextInt(_PromptVariant.values.length)];
   }
@@ -901,6 +898,48 @@ class _NextLessonTarget {
     required this.lessonIndex,
     required this.lesson,
   });
+}
+
+class MidiInputBuffer {
+  MidiInputBuffer({
+    required this.onChordReady,
+    this.chordWindow = const Duration(milliseconds: 100),
+  });
+
+  final void Function(List<int> notes) onChordReady;
+  final Duration chordWindow;
+
+  final Set<int> _pendingNotes = <int>{};
+  Timer? _flushTimer;
+
+  void addNote(int midi) {
+    _pendingNotes.add(midi);
+
+    _flushTimer?.cancel();
+    _flushTimer = Timer(chordWindow, _flush);
+  }
+
+  void _flush() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+
+    if (_pendingNotes.isEmpty) return;
+
+    final played = _pendingNotes.toList()..sort();
+    _pendingNotes.clear();
+
+    onChordReady(played);
+  }
+
+  void reset() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _pendingNotes.clear();
+  }
+
+  void dispose() {
+    reset();
+  }
 }
 
 class _SimpleStaffPainter extends CustomPainter {
@@ -976,6 +1015,12 @@ class _SimpleStaffPainter extends CustomPainter {
     return (octave - baseOct) * 7 + (diat - baseDiat);
   }
 
+  bool _useBassClef() {
+    if (midiNotes.isEmpty) return false;
+    final avg = midiNotes.reduce((a, b) => a + b) / midiNotes.length;
+    return avg < 60;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final staffPaint = Paint()
@@ -988,40 +1033,54 @@ class _SimpleStaffPainter extends CustomPainter {
     final staffHeight = size.height * 0.55;
     final staffTop = (size.height - staffHeight) / 2;
     final lineGap = staffHeight / 4;
-    final staffLeft = 12.0;
-    final staffRight = size.width - 12.0;
+
+    final staffLeft = 20.0;
+    final staffRight = size.width - 16.0;
+
+    final useBassClef = _useBassClef();
 
     for (int i = 0; i < 5; i++) {
       final y = staffTop + i * lineGap;
-      canvas.drawLine(Offset(staffLeft, y), Offset(staffRight, y), staffPaint);
+      canvas.drawLine(
+        Offset(staffLeft, y),
+        Offset(staffRight, y),
+        staffPaint,
+      );
     }
 
     final clefPainter = TextPainter(
-      text: const TextSpan(
-        text: '𝄞',
+      text: TextSpan(
+        text: useBassClef ? '𝄢' : '𝄞',
         style: TextStyle(
-          fontSize: 44,
+          fontSize: useBassClef ? 38 : 44,
           fontWeight: FontWeight.w700,
           color: Colors.black,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    clefPainter.paint(canvas, Offset(staffLeft, staffTop - 18));
+
+    final clefX = useBassClef ? staffLeft - 2 : staffLeft;
+    final clefY = useBassClef ? staffTop - 10 : staffTop - 18;
+    clefPainter.paint(canvas, Offset(clefX, clefY));
 
     final n = midiNotes.isEmpty ? 1 : midiNotes.length.clamp(1, 64);
-    final left = staffLeft + 52.0;
+
+    final left = staffLeft + 68.0;
     final right = staffRight;
     final dx = (right - left) / (n + 0.6);
 
     final halfStepY = lineGap / 2;
-
-    final e4Step = _midiToDiatonicStepDisplay(64);
     final bottomLineY = staffTop + 4 * lineGap;
+    final topLineY = staffTop;
+
+    final baseStep = useBassClef
+        ? _midiToDiatonicStepDisplay(43)
+        : _midiToDiatonicStepDisplay(64);
 
     double yForMidi(int midi) {
       final s = _midiToDiatonicStepDisplay(midi);
-      final diff = s - e4Step;
+      final diff = s - baseStep;
       return bottomLineY - diff * halfStepY;
     }
 
@@ -1043,14 +1102,39 @@ class _SimpleStaffPainter extends CustomPainter {
       final x = left + dx * (i + 0.8);
       final y = yForMidi(midi);
 
-      final isCurrent = (!done && i == currentIndex);
+      final isCurrent = !done && i == currentIndex;
       final isCompleted = done ? true : (i < currentIndex);
 
       final r = isCurrent ? 10.0 : 8.0;
+      final noteWidth = r * 2.8;
 
       final pc = midi % 12;
       if (_needsAccidental(pc)) {
         accTP.paint(canvas, Offset(x - (r * 2.2) - 8, y - 12));
+      }
+
+      if (y > bottomLineY + halfStepY) {
+        for (double ledgerY = bottomLineY + lineGap;
+        ledgerY <= y + 0.1;
+        ledgerY += lineGap) {
+          canvas.drawLine(
+            Offset(x - noteWidth / 2, ledgerY),
+            Offset(x + noteWidth / 2, ledgerY),
+            staffPaint,
+          );
+        }
+      }
+
+      if (y < topLineY - halfStepY) {
+        for (double ledgerY = topLineY - lineGap;
+        ledgerY >= y - 0.1;
+        ledgerY -= lineGap) {
+          canvas.drawLine(
+            Offset(x - noteWidth / 2, ledgerY),
+            Offset(x + noteWidth / 2, ledgerY),
+            staffPaint,
+          );
+        }
       }
 
       if (!isCompleted && !isCurrent) {
@@ -1058,20 +1142,29 @@ class _SimpleStaffPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2
           ..color = Colors.black.withOpacity(0.35);
+
         canvas.drawOval(
-          Rect.fromCenter(center: Offset(x, y), width: r * 2, height: r * 1.6),
+          Rect.fromCenter(
+            center: Offset(x, y),
+            width: r * 2,
+            height: r * 1.6,
+          ),
           outline,
         );
       } else {
         canvas.drawOval(
-          Rect.fromCenter(center: Offset(x, y), width: r * 2, height: r * 1.6),
+          Rect.fromCenter(
+            center: Offset(x, y),
+            width: r * 2,
+            height: r * 1.6,
+          ),
           isCurrent ? currentPaint : notePaint,
         );
       }
 
       if (isCurrent) {
         final arrowPaint = Paint()..color = Colors.blue;
-        final ay = staffTop - 8;
+        final ay = staffTop - 2;
         final path = Path()
           ..moveTo(x, ay)
           ..lineTo(x - 10, ay - 18)

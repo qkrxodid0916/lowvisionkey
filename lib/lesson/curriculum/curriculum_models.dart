@@ -99,21 +99,24 @@ enum LessonPlanType { singleNotes, chords }
 class LessonPlan {
   final LessonPlanType type;
 
-  /// 문제를 구성하는 음(단음일 때는 1개짜리 리스트가 반복)
-  /// 예: [[60],[62],[64]] 또는 화음 [[60,64,67]]
+  /// 문제를 구성하는 음
   final List<List<int>> sequences;
 
-  /// 총 문제 수(엔진이 이 횟수만큼 출제)
+  /// 총 문제 수
   final int totalQuestions;
 
-  /// 정답 제한시간(ms) - 타이밍 판정 붙일 때 활용 가능
+  /// 정답 제한시간(ms)
   final int? timeLimitMs;
+
+  /// ✅ 문제를 랜덤으로 섞을지 여부
+  final bool shuffleQuestions;
 
   const LessonPlan({
     required this.type,
     required this.sequences,
     required this.totalQuestions,
     this.timeLimitMs,
+    this.shuffleQuestions = false, // 기본은 순서형
   });
 }
 

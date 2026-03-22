@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
+import '../../app/dev_settings.dart';
 import 'package:lowvision_key/settings/screens/font_selection_screen.dart';
 import '../../report/repositories/report_repository.dart';
 
@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<_ExistingAccountAction> _showAlreadyExistsDialog() async {
-    const fs = 30.0; // base 크기 (전역 textScaler가 최종 확대)
+    const fs = 30.0;
 
     final result = await showDialog<_ExistingAccountAction>(
       context: context,
@@ -198,9 +198,121 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildDevSettingsCard(double fs) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 14,
+            offset: Offset(0, 8),
+            color: Color(0x14000000),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "개발자 모드",
+            style: TextStyle(
+              fontSize: fs * 0.85,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "개발 중 테스트를 빠르게 하기 위한 옵션이에요.",
+            style: TextStyle(
+              fontSize: fs * 0.52,
+              color: const Color(0xFF6B7280),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              "레슨 전체 해제",
+              style: TextStyle(
+                fontSize: fs * 0.58,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            subtitle: Text(
+              "모든 주차와 Day를 바로 열어 테스트해요.",
+              style: TextStyle(
+                fontSize: fs * 0.48,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            value: DevSettings.unlockAllLessons,
+            onChanged: (v) {
+              setState(() {
+                DevSettings.unlockAllLessons = v;
+              });
+            },
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              "결과 저장 끄기",
+              style: TextStyle(
+                fontSize: fs * 0.58,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            subtitle: Text(
+              "테스트 중 결과를 저장하지 않아요.",
+              style: TextStyle(
+                fontSize: fs * 0.48,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            value: DevSettings.disableResultSaving,
+            onChanged: (v) {
+              setState(() {
+                DevSettings.disableResultSaving = v;
+              });
+            },
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              "BLE 입력 강제",
+              style: TextStyle(
+                fontSize: fs * 0.58,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            subtitle: Text(
+              "필요할 때만 켜세요.",
+              style: TextStyle(
+                fontSize: fs * 0.48,
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            value: DevSettings.forceBleInput,
+            onChanged: (v) {
+              setState(() {
+                DevSettings.forceBleInput = v;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    const fs = 30.0; // base 크기 (전역 textScaler가 최종 확대)
+    const fs = 30.0;
 
     final user = _user;
     final isGuest = _isGuest;
@@ -233,7 +345,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
             children: [
-              // ✅ 글씨 크기 조절 메뉴
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -273,7 +384,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 16),
 
-              // ✅ 계정 카드
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -345,8 +455,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.info_outline,
-                                color: Color(0xFF2563EB)),
+                            const Icon(Icons.info_outline, color: Color(0xFF2563EB)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -379,8 +488,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
-                              icon: const Icon(Icons.link,
-                                  color: Colors.white),
+                              icon: const Icon(Icons.link, color: Colors.white),
                               label: Text(
                                 "구글 계정 연결하기",
                                 style: TextStyle(
@@ -404,8 +512,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            icon: const Icon(Icons.logout,
-                                color: Colors.white),
+                            icon: const Icon(Icons.logout, color: Colors.white),
                             label: Text(
                               "로그아웃",
                               style: TextStyle(
@@ -422,6 +529,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              _buildDevSettingsCard(fs),
             ],
           ),
 

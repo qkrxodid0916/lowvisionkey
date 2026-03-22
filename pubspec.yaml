@@ -44,7 +44,7 @@ dependencies:
   cloud_firestore: ^6.1.2
   fl_chart: ^0.66.2
   shared_preferences: ^2.2.3
-
+  flutter_midi_command: ^0.5.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

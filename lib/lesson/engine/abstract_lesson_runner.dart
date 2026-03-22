@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../curriculum/curriculum_models.dart';
 import '../models/lesson_result.dart';
@@ -9,6 +10,9 @@ abstract class AbstractLessonRunner {
 
   /// ✅ 기대값(문제)이 바뀔 때 외부로 알려주는 훅 (ESP32 LED 가이드용)
   final Future<void> Function(Set<int> notes)? onGuideNotesChanged;
+
+  final Random _random = Random();
+  late List<List<int>> _questionQueue;
 
   int _currentIndex = 0;
   int _correct = 0;
@@ -47,19 +51,45 @@ abstract class AbstractLessonRunner {
     wrongCountOnStep.value = 0;
     isCompleted.value = false;
 
+    _questionQueue = _buildQuestionQueue();
+
     final first = _expectedNow();
     currentExpected.value = first;
 
-    // ✅ 시작 시: 이번 레슨에서 등장하는 노트들 기록(Plan 수정 없이 임시로)
+    // ✅ 시작 시: 이번 레슨에서 등장하는 노트들 기록
     progress.lastNewNotes = _collectAllNotesInPlan();
 
     // ✅ 첫 문제 가이드 송신(없으면 빈 셋)
     onGuideNotesChanged?.call(first?.toSet() ?? <int>{});
   }
 
+  List<List<int>> _buildQuestionQueue() {
+    if (lesson.plan.sequences.isEmpty || lesson.plan.totalQuestions <= 0) {
+      return <List<int>>[];
+    }
+
+    final source = lesson.plan.sequences;
+    final total = lesson.plan.totalQuestions;
+    final result = <List<int>>[];
+
+    if (lesson.plan.shuffleQuestions) {
+      for (int i = 0; i < total; i++) {
+        final picked = source[_random.nextInt(source.length)];
+        result.add(List<int>.from(picked));
+      }
+    } else {
+      for (int i = 0; i < total; i++) {
+        final picked = source[i % source.length];
+        result.add(List<int>.from(picked));
+      }
+    }
+
+    return result;
+  }
+
   List<int>? _expectedNow() {
-    if (_currentIndex >= lesson.plan.totalQuestions) return null;
-    return lesson.plan.sequences[_currentIndex % lesson.plan.sequences.length];
+    if (_currentIndex >= _questionQueue.length) return null;
+    return _questionQueue[_currentIndex];
   }
 
   /// 이번 레슨 플랜에 등장하는 모든 노트(중복 제거)
@@ -91,7 +121,6 @@ abstract class AbstractLessonRunner {
       lastHit.value = true;
       wrongCountOnStep.value = 0;
 
-      // ✅ Progress 누적(정답) - 단음/화음 모두 처리
       for (final m in expected) {
         progress.of(m).success++;
       }
@@ -100,17 +129,13 @@ abstract class AbstractLessonRunner {
 
       _currentIndex++;
 
-      if (_currentIndex >= lesson.plan.totalQuestions) {
+      if (_currentIndex >= _questionQueue.length) {
         currentExpected.value = null;
         isCompleted.value = true;
-
-        // ✅ 완료 시 가이드 끄기
         onGuideNotesChanged?.call(<int>{});
       } else {
         final next = _expectedNow();
         currentExpected.value = next;
-
-        // ✅ 다음 문제 가이드 송신
         onGuideNotesChanged?.call(next?.toSet() ?? <int>{});
       }
     } else {
@@ -118,16 +143,12 @@ abstract class AbstractLessonRunner {
       lastHit.value = false;
       wrongCountOnStep.value = wrongCountOnStep.value + 1;
 
-      // ✅ Progress 누적(오답) - 단음/화음 모두 처리
       for (final m in expected) {
         progress.of(m).fail++;
       }
 
-      // ✅ 최근 실패 노트(화음이면 화음 구성음 전체)
-      // (중복 제거 + 정렬해서 UI/리포트에서 쓰기 좋게)
       progress.lastFailedNotes = expected.toSet().toList()..sort();
 
-      // ✅ 리포트용 wrongByMidi 집계(기존 로직 유지: 대표키는 첫 음)
       final key = expected.isNotEmpty ? expected.first : -1;
       _wrongByMidi[key] = (_wrongByMidi[key] ?? 0) + 1;
 
