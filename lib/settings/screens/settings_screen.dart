@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../app/dev_settings.dart';
 import 'package:lowvision_key/settings/screens/font_selection_screen.dart';
 import '../../report/repositories/report_repository.dart';
+import '../../ble/screens/ble_scan_screen.dart';
 
 enum _ExistingAccountAction { cancel, useExisting, chooseAnother }
 
@@ -197,7 +198,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
+  void _openBleScanScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const BleScanScreen(),
+      ),
+    );
+  }
   Widget _buildDevSettingsCard(double fs) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -281,29 +289,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               });
             },
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              "BLE 입력 강제",
-              style: TextStyle(
-                fontSize: fs * 0.58,
-                fontWeight: FontWeight.w800,
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black87,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-            ),
-            subtitle: Text(
-              "필요할 때만 켜세요.",
-              style: TextStyle(
-                fontSize: fs * 0.48,
-                color: const Color(0xFF6B7280),
-                fontWeight: FontWeight.w600,
+              icon: const Icon(Icons.bluetooth, color: Colors.white),
+              label: Text(
+                "ESP32 LED 기기 연결",
+                style: TextStyle(
+                  fontSize: fs * 0.58,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
+              onPressed: _working ? null : _openBleScanScreen,
             ),
-            value: DevSettings.forceBleInput,
-            onChanged: (v) {
-              setState(() {
-                DevSettings.forceBleInput = v;
-              });
-            },
           ),
         ],
       ),

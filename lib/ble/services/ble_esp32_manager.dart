@@ -35,6 +35,11 @@ class BleEsp32Manager {
   ValueNotifier(DeviceConnectionState.disconnected);
 
   String? _deviceId;
+  String? _lastDeviceId;
+
+  bool _autoReconnect = false;
+  bool _reconnecting = false;
+  bool _manualDisconnecting = false;
 
   bool get isConnected =>
       connectionState.value == DeviceConnectionState.connected &&
@@ -65,7 +70,12 @@ class BleEsp32Manager {
   Future<void> scanAndConnect({
     Duration scanTimeout = const Duration(seconds: 5),
   }) async {
-    await disconnect();
+    if (isConnected) {
+      debugPrint('ESP32 already connected');
+      return;
+    }
+
+    await disconnect(manual: false);
 
     final completer = Completer<DiscoveredDevice>();
 
@@ -98,9 +108,13 @@ class BleEsp32Manager {
   }
 
   Future<void> connectToDeviceId(String deviceId) async {
-    await disconnect();
+    await disconnect(manual: false);
 
     _deviceId = deviceId;
+    _lastDeviceId = deviceId;
+    _autoReconnect = true;
+    _manualDisconnecting = false;
+
     connectionState.value = DeviceConnectionState.connecting;
 
     final connectionCompleter = Completer<void>();
@@ -115,24 +129,45 @@ class BleEsp32Manager {
         connectionState.value = update.connectionState;
 
         if (update.connectionState == DeviceConnectionState.connected) {
+          debugPrint('ESP32 connected: $deviceId');
+          _deviceId = deviceId;
+
           if (!connectionCompleter.isCompleted) {
             connectionCompleter.complete();
           }
         } else if (update.connectionState ==
             DeviceConnectionState.disconnected) {
+          debugPrint('ESP32 disconnected');
+
           _deviceId = null;
+
+          if (!_manualDisconnecting && _autoReconnect) {
+            // ignore: discarded_futures
+            _tryReconnect();
+          }
         }
       },
       onError: (Object e) {
+        debugPrint('ESP32 connection error: $e');
+
         connectionState.value = DeviceConnectionState.disconnected;
         _deviceId = null;
+
         if (!connectionCompleter.isCompleted) {
           connectionCompleter.completeError(e);
+        }
+
+        if (!_manualDisconnecting && _autoReconnect) {
+          // ignore: discarded_futures
+          _tryReconnect();
         }
       },
     );
 
     await connectionCompleter.future;
+
+    await _notifySub?.cancel();
+    _notifySub = null;
 
     final notifyChar = _notifyChar;
     if (notifyChar != null) {
@@ -143,11 +178,56 @@ class BleEsp32Manager {
             _notifyController.add(text);
           }
         },
+        onError: (Object e) {
+          debugPrint('ESP32 notify error: $e');
+        },
       );
     }
   }
 
-  Future<void> disconnect() async {
+  Future<void> _tryReconnect() async {
+    if (_reconnecting) return;
+
+    final id = _lastDeviceId;
+    if (id == null) return;
+
+    _reconnecting = true;
+
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (!_autoReconnect || _manualDisconnecting || isConnected) {
+        return;
+      }
+
+      debugPrint('ESP32 reconnect try: $id');
+
+      await connectToDeviceId(id);
+
+      debugPrint('ESP32 reconnect success');
+    } catch (e) {
+      debugPrint('ESP32 reconnect failed: $e');
+
+      if (_autoReconnect && !_manualDisconnecting) {
+        await Future.delayed(const Duration(seconds: 2));
+        _reconnecting = false;
+
+        // ignore: discarded_futures
+        _tryReconnect();
+        return;
+      }
+    } finally {
+      _reconnecting = false;
+    }
+  }
+
+  Future<void> disconnect({bool manual = true}) async {
+    if (manual) {
+      _manualDisconnecting = true;
+      _autoReconnect = false;
+      _lastDeviceId = null;
+    }
+
     await _scanSub?.cancel();
     _scanSub = null;
 
@@ -162,15 +242,37 @@ class BleEsp32Manager {
   }
 
   Future<void> sendRaw(String text) async {
+    debugPrint('BLE SEND TRY -> $text / connected=$isConnected');
+
     final c = _writeChar;
     if (c == null || !isConnected) {
-      throw StateError('ESP32가 연결되지 않았어요.');
+      debugPrint('BLE SEND SKIP -> not connected');
+
+      if (_autoReconnect && !_reconnecting && _lastDeviceId != null) {
+        // ignore: discarded_futures
+        _tryReconnect();
+      }
+
+      return;
     }
 
-    await _ble.writeCharacteristicWithResponse(
-      c,
-      value: utf8.encode(text),
-    );
+    try {
+      await _ble.writeCharacteristicWithResponse(
+        c,
+        value: utf8.encode(text),
+      );
+      debugPrint('BLE SEND OK -> $text');
+    } catch (e) {
+      debugPrint('BLE SEND FAIL -> $text / $e');
+
+      _deviceId = null;
+      connectionState.value = DeviceConnectionState.disconnected;
+
+      if (_autoReconnect) {
+        // ignore: discarded_futures
+        _tryReconnect();
+      }
+    }
   }
 
   Future<void> sendTarget(Iterable<int> midiNotes) async {
@@ -200,7 +302,7 @@ class BleEsp32Manager {
   }
 
   Future<void> dispose() async {
-    await disconnect();
+    await disconnect(manual: true);
     await _notifyController.close();
     connectionState.dispose();
   }

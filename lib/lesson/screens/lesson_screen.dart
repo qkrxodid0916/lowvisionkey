@@ -430,6 +430,9 @@ class _LessonScreenState extends State<LessonScreen> {
     _runner.onInput(notes);
 
     if (_runner.lastHit.value == false) {
+      debugPrint('LESSON WRONG -> count=${_runner.wrongCountOnStep.value}');
+      debugPrint('EXPECTED -> $expectedBeforeInput');
+
       // 오답 LED: 항상 전체 빨강 2번 점멸
       // ignore: discarded_futures
       BleEsp32Manager.I.sendWrong();
@@ -438,6 +441,9 @@ class _LessonScreenState extends State<LessonScreen> {
       if (_runner.wrongCountOnStep.value >= 2 &&
           expectedBeforeInput != null &&
           expectedBeforeInput.isNotEmpty) {
+
+        debugPrint('SEND TARGET!');
+
         // ignore: discarded_futures
         BleEsp32Manager.I.sendTarget(expectedBeforeInput);
       }
