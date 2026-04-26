@@ -15,6 +15,7 @@ import '../curriculum/curriculum_models.dart';
 import '../engine/abstract_lesson_runner.dart';
 import '../engine/ble_lesson_runner.dart';
 import '../progress/course_progress_repository.dart';
+import '../../ble/services/ble_esp32_manager.dart';
 
 enum AccidentalStyle { sharp, flat }
 
@@ -130,6 +131,10 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   void dispose() {
+    // ESP32 LED 가이드 초기화
+    // ignore: discarded_futures
+    BleEsp32Manager.I.sendReset();
+
     _disposeUsbMidi();
     _inputBuffer.dispose();
 
@@ -217,10 +222,8 @@ class _LessonScreenState extends State<LessonScreen> {
     _resetInputGate();
     _runner.start();
 
-    if (_runner is BleLessonRunner) {
-      // ignore: discarded_futures
-      (_runner as BleLessonRunner).resetGuide();
-    }
+    // 레슨 시작마다 LED를 강제로 초기화하지 않음.
+    // 가이드 전송은 BleLessonRunner의 onGuideNotesChanged가 처리함.
 
     _toastText = null;
     _flashWrong = false;
@@ -320,10 +323,10 @@ class _LessonScreenState extends State<LessonScreen> {
       _startCurrentStep();
     } else {
       _runner.start();
-      if (_runner is BleLessonRunner) {
-        // ignore: discarded_futures
-        (_runner as BleLessonRunner).resetGuide();
-      }
+
+      // 스텝 전환 때도 LED를 강제로 초기화하지 않음.
+      // 가이드 전송은 BleLessonRunner가 처리함.
+
       setState(() {});
     }
   }
@@ -420,9 +423,25 @@ class _LessonScreenState extends State<LessonScreen> {
     if (notes.isEmpty) return;
     if (_runner.isCompleted.value == true) return;
 
+    final expectedBeforeInput = _runner.currentExpected.value;
+
+    debugPrint('SUBMIT INPUT -> $notes');
+
     _runner.onInput(notes);
 
     if (_runner.lastHit.value == false) {
+      // 오답 LED: 항상 전체 빨강 2번 점멸
+      // ignore: discarded_futures
+      BleEsp32Manager.I.sendWrong();
+
+      // 2번 이상 틀렸을 때만 정답 가이드 표시
+      if (_runner.wrongCountOnStep.value >= 2 &&
+          expectedBeforeInput != null &&
+          expectedBeforeInput.isNotEmpty) {
+        // ignore: discarded_futures
+        BleEsp32Manager.I.sendTarget(expectedBeforeInput);
+      }
+
       _playWrongBeep();
       _showWrongFlash();
 
@@ -696,7 +715,7 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   Widget _buildKeyboardArea({required bool isTablet}) {
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<int>(
       valueListenable: _runner.wrongCountOnStep,
       builder: (context, wrongCount, _) {
         final guideOn = _currentStep.guideEnabled;

@@ -5,6 +5,7 @@ import '../curriculum/curriculum_models.dart';
 import '../progress/course_progress_repository.dart';
 import 'lesson_screen.dart';
 import '../../app/dev_settings.dart';
+import '../../ble/screens/ble_scan_screen.dart';
 
 class CourseLevelsScreen extends StatefulWidget {
   const CourseLevelsScreen({super.key});
@@ -184,7 +185,15 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
             completed: completed,
             bestAccuracy: best,
             onTap: unlocked
-                ? () {
+                ? () async {
+              final connected = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => const BleScanScreen(),
+                ),
+              );
+
+              if (connected != true || !context.mounted) return;
+
               Navigator.of(context)
                   .push(
                 MaterialPageRoute(

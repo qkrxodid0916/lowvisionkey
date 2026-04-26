@@ -10,11 +10,7 @@ class BleLessonRunner extends AbstractLessonRunner {
         super(
         lesson,
         onGuideNotesChanged: (notes) async {
-          final b = ble ?? BleEsp32Manager.I;
-
-          // notes는 MIDI 번호(Set<int>)일 수 있음
-          // ESP32가 MIDI -> LED 매핑 처리하므로 그대로 보냄
-          await b.sendTarget(notes);
+          // 자동 가이드 전송 안 함
         },
       );
 
@@ -30,14 +26,12 @@ class BleLessonRunner extends AbstractLessonRunner {
 
   @override
   void onCorrect(List<int> expected) {
-    // 필요하면 나중에 성공 피드백 명령 추가
-    // 예: _ble.sendRaw('C:${expected.join(',')}');
+    // 정답 LED 피드백 없음
   }
 
   @override
   void onWrong(List<int> expected) {
-    // 필요하면 나중에 오답 피드백 명령 추가
-    // 예: _ble.sendRaw('W:${expected.join(',')}');
+    // LED 오답 처리는 LessonScreen에서 직접 처리
   }
 
   @override

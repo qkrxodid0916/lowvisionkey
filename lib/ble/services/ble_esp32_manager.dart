@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 class BleEsp32Manager {
@@ -30,10 +31,14 @@ class BleEsp32Manager {
 
   Stream<String> get notifyStream => _notifyController.stream;
 
-  String? _deviceId;
-  bool _connected = false;
+  final ValueNotifier<DeviceConnectionState> connectionState =
+  ValueNotifier(DeviceConnectionState.disconnected);
 
-  bool get isConnected => _connected && _deviceId != null;
+  String? _deviceId;
+
+  bool get isConnected =>
+      connectionState.value == DeviceConnectionState.connected &&
+          _deviceId != null;
 
   QualifiedCharacteristic? get _writeChar {
     final id = _deviceId;
@@ -59,7 +64,6 @@ class BleEsp32Manager {
 
   Future<void> scanAndConnect({
     Duration scanTimeout = const Duration(seconds: 5),
-    Duration connectTimeout = const Duration(seconds: 10),
   }) async {
     await disconnect();
 
@@ -90,29 +94,38 @@ class BleEsp32Manager {
     await _scanSub?.cancel();
     _scanSub = null;
 
-    _deviceId = found.id;
+    await connectToDeviceId(found.id);
+  }
+
+  Future<void> connectToDeviceId(String deviceId) async {
+    await disconnect();
+
+    _deviceId = deviceId;
+    connectionState.value = DeviceConnectionState.connecting;
 
     final connectionCompleter = Completer<void>();
 
     _connSub = _ble
         .connectToDevice(
-      id: found.id,
-      connectionTimeout: connectTimeout,
+      id: deviceId,
+      connectionTimeout: const Duration(seconds: 10),
     )
         .listen(
           (update) {
+        connectionState.value = update.connectionState;
+
         if (update.connectionState == DeviceConnectionState.connected) {
-          _connected = true;
           if (!connectionCompleter.isCompleted) {
             connectionCompleter.complete();
           }
         } else if (update.connectionState ==
             DeviceConnectionState.disconnected) {
-          _connected = false;
+          _deviceId = null;
         }
       },
       onError: (Object e) {
-        _connected = false;
+        connectionState.value = DeviceConnectionState.disconnected;
+        _deviceId = null;
         if (!connectionCompleter.isCompleted) {
           connectionCompleter.completeError(e);
         }
@@ -130,9 +143,6 @@ class BleEsp32Manager {
             _notifyController.add(text);
           }
         },
-        onError: (Object e) {
-          // 필요하면 디버그 로그 추가
-        },
       );
     }
   }
@@ -147,13 +157,13 @@ class BleEsp32Manager {
     await _connSub?.cancel();
     _connSub = null;
 
-    _connected = false;
     _deviceId = null;
+    connectionState.value = DeviceConnectionState.disconnected;
   }
 
   Future<void> sendRaw(String text) async {
     final c = _writeChar;
-    if (c == null || !_connected) {
+    if (c == null || !isConnected) {
       throw StateError('ESP32가 연결되지 않았어요.');
     }
 
@@ -164,17 +174,21 @@ class BleEsp32Manager {
   }
 
   Future<void> sendTarget(Iterable<int> midiNotes) async {
-    final list = midiNotes.toList()..sort();
-    if (list.isEmpty) return;
+    final unique = <int>[];
+    for (final n in midiNotes) {
+      if (n < 48 || n > 83) continue;
+      if (!unique.contains(n)) unique.add(n);
+      if (unique.length >= 6) break;
+    }
 
-    await sendRaw('T:${list.join(',')}');
+    unique.sort();
+    if (unique.isEmpty) return;
+
+    await sendRaw('T:${unique.join(',')}');
   }
 
-  Future<void> sendInput(Iterable<int> midiNotes) async {
-    final list = midiNotes.toList()..sort();
-    if (list.isEmpty) return;
-
-    await sendRaw('I:${list.join(',')}');
+  Future<void> sendWrong() async {
+    await sendRaw('W');
   }
 
   Future<void> sendReset() async {
@@ -188,5 +202,6 @@ class BleEsp32Manager {
   Future<void> dispose() async {
     await disconnect();
     await _notifyController.close();
+    connectionState.dispose();
   }
 }

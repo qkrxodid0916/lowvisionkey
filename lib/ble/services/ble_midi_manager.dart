@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
@@ -8,23 +10,17 @@ class BleMidiManager {
 
   final FlutterReactiveBle _ble = FlutterReactiveBle();
 
-  // BLE-MIDI 표준 UUID
-  static final Uuid midiService =
-  Uuid.parse('03B80E5A-EDE8-4B33-A751-6CE34EC4C700');
-  static final Uuid midiChar =
-  Uuid.parse('7772E5DB-3868-4112-A1A9-F2669D106BF3');
-
-  /// ✅ 채널 규칙(0-based)
-  /// - 입력(키보드 → ESP32 → 앱): channel 0
-  /// - 가이드(앱 → ESP32): channel 1
-  static const int inputChannel = 0;
-  static const int guideChannel = 1;
-
-  /// ✅ 수신에서 “판정용으로 받을 채널”(기본: inputChannel)
-  int listenChannel = inputChannel;
+  // ✅ ESP32 현재 코드와 맞춘 UUID
+  static final Uuid serviceUuid =
+  Uuid.parse('6E400001-B5A3-F393-E0A9-E50E24DCCA9E');
+  static final Uuid writeCharUuid =
+  Uuid.parse('6E400002-B5A3-F393-E0A9-E50E24DCCA9E');
+  static final Uuid notifyCharUuid =
+  Uuid.parse('6E400003-B5A3-F393-E0A9-E50E24DCCA9E');
 
   String? _deviceId;
   StreamSubscription<ConnectionStateUpdate>? _connSub;
+  StreamSubscription<List<int>>? _notifySub;
 
   final ValueNotifier<DeviceConnectionState> connectionState =
   ValueNotifier(DeviceConnectionState.disconnected);
@@ -33,27 +29,33 @@ class BleMidiManager {
   bool get isConnected =>
       connectionState.value == DeviceConnectionState.connected;
 
-  QualifiedCharacteristic? get _qc {
+  QualifiedCharacteristic? get _writeQc {
     final id = _deviceId;
     if (id == null) return null;
     return QualifiedCharacteristic(
       deviceId: id,
-      serviceId: midiService,
-      characteristicId: midiChar,
+      serviceId: serviceUuid,
+      characteristicId: writeCharUuid,
     );
   }
 
-  // ===== 수신 스트림 =====
-  final StreamController<int> _noteOnCtrl = StreamController<int>.broadcast();
-  final StreamController<int> _noteOffCtrl = StreamController<int>.broadcast();
+  QualifiedCharacteristic? get _notifyQc {
+    final id = _deviceId;
+    if (id == null) return null;
+    return QualifiedCharacteristic(
+      deviceId: id,
+      serviceId: serviceUuid,
+      characteristicId: notifyCharUuid,
+    );
+  }
 
-  Stream<int> get noteOnStream => _noteOnCtrl.stream;
-  Stream<int> get noteOffStream => _noteOffCtrl.stream;
+  // ===== notify 문자열 수신 =====
+  final StreamController<String> _messageCtrl =
+  StreamController<String>.broadcast();
 
-  StreamSubscription<List<int>>? _notifySub;
+  Stream<String> get messageStream => _messageCtrl.stream;
 
   Future<void> connect(String deviceId) async {
-    // 이미 같은 기기 연결 중/연결됨이면 무시
     if (_deviceId == deviceId &&
         (connectionState.value == DeviceConnectionState.connected ||
             connectionState.value == DeviceConnectionState.connecting)) {
@@ -71,14 +73,21 @@ class BleMidiManager {
       connectionTimeout: const Duration(seconds: 10),
     )
         .listen(
-          (u) {
-        connectionState.value = u.connectionState;
-        if (u.connectionState == DeviceConnectionState.disconnected) {
+          (update) {
+        connectionState.value = update.connectionState;
+
+        if (update.connectionState == DeviceConnectionState.connected) {
+          debugPrint('BLE connected: $deviceId');
+        }
+
+        if (update.connectionState == DeviceConnectionState.disconnected) {
+          debugPrint('BLE disconnected: $deviceId');
           _deviceId = null;
           stopListening();
         }
       },
-      onError: (_) {
+      onError: (e) {
+        debugPrint('BLE connection error: $e');
         connectionState.value = DeviceConnectionState.disconnected;
         _deviceId = null;
         stopListening();
@@ -94,100 +103,74 @@ class BleMidiManager {
     connectionState.value = DeviceConnectionState.disconnected;
   }
 
-  /// BLE-MIDI 패킷: timestamp header(2바이트) + MIDI message bytes
-  List<int> _wrapBleMidi(List<int> midiBytes) {
-    final ts = DateTime.now().millisecondsSinceEpoch % 8192; // 13-bit timestamp
-    final header1 = 0x80 | ((ts >> 7) & 0x3F); // 0b10xxxxxx
-    final header2 = 0x80 | (ts & 0x7F); // 0b1xxxxxxx
-    return <int>[header1, header2, ...midiBytes];
-  }
+  // ===== 내부 write =====
+  Future<void> _writeText(String text) async {
+    final qc = _writeQc;
+    if (qc == null || !isConnected) {
+      debugPrint('BLE write skipped: not connected');
+      return;
+    }
 
-  Future<void> _write(List<int> bleMidiPacket) async {
-    final qc = _qc;
-    if (qc == null || !isConnected) return;
+    final bytes = Uint8List.fromList(text.codeUnits);
 
-    await _ble.writeCharacteristicWithoutResponse(
-      qc,
-      value: bleMidiPacket,
-    );
-  }
+    debugPrint('BLE SEND -> $text');
+    debugPrint('BLE SEND BYTES -> ${bytes.toList()}');
 
-  Future<void> sendNoteOn(
-      int midiNote, {
-        int velocity = 110,
-        int channel = 0,
-      }) async {
-    if (midiNote < 0 || midiNote > 127) return;
-    velocity = velocity.clamp(0, 127);
-    channel = channel.clamp(0, 15);
-
-    final status = 0x90 | channel;
-    final msg = <int>[status, midiNote, velocity];
-    await _write(_wrapBleMidi(msg));
-  }
-
-  Future<void> sendNoteOff(
-      int midiNote, {
-        int channel = 0,
-      }) async {
-    if (midiNote < 0 || midiNote > 127) return;
-    channel = channel.clamp(0, 15);
-
-    // NOTE OFF는 0x80도 가능하지만, 0x90 velocity 0도 널리 사용
-    final status = 0x90 | channel;
-    final msg = <int>[status, midiNote, 0];
-    await _write(_wrapBleMidi(msg));
-  }
-
-  /// ✅ Control Change 전송 (MIDI CC)
-  Future<void> sendControlChange(
-      int controller,
-      int value, {
-        int channel = 0,
-      }) async {
-    controller = controller.clamp(0, 127);
-    value = value.clamp(0, 127);
-    channel = channel.clamp(0, 15);
-
-    final status = 0xB0 | channel;
-    final msg = <int>[status, controller, value];
-    await _write(_wrapBleMidi(msg));
-  }
-
-  /// ✅ 유지보수형 All Notes Off
-  /// - 표준 CC(123/120) 우선
-  /// - ESP32가 CC를 무시하는 경우 fallbackSweep=true로 note-off sweep 추가
-  Future<void> sendAllNotesOff({
-    int channel = 0,
-    bool fallbackSweep = false,
-  }) async {
-    channel = channel.clamp(0, 15);
-
-    // 표준 MIDI CC
-    await sendControlChange(123, 0, channel: channel); // All Notes Off
-    await sendControlChange(120, 0, channel: channel); // All Sound Off
-
-    if (!fallbackSweep) return;
-
-    for (int m = 0; m < 128; m++) {
-      unawaited(sendNoteOff(m, channel: channel));
+    try {
+      await _ble.writeCharacteristicWithResponse(
+        qc,
+        value: bytes,
+      );
+    } catch (e) {
+      debugPrint('BLE write error: $e');
     }
   }
 
-  // ===== 수신 시작/중지 =====
+  // ===== ESP32 명령 전송 =====
 
+  /// 예: T:60
+  /// 예: T:60,64,67
+  Future<void> sendTargetNotes(List<int> midiNotes) async {
+    if (midiNotes.isEmpty) return;
+
+    final filtered = <int>[];
+    for (final note in midiNotes) {
+      if (note < 48 || note > 83) continue;
+      if (!filtered.contains(note)) {
+        filtered.add(note);
+      }
+      if (filtered.length >= 6) break;
+    }
+
+    if (filtered.isEmpty) {
+      debugPrint('sendTargetNotes skipped: no valid notes');
+      return;
+    }
+
+    final cmd = 'T:${filtered.join(',')}';
+    await _writeText(cmd);
+  }
+
+  Future<void> sendReset() async {
+    await _writeText('R');
+  }
+
+  Future<void> sendTest() async {
+    await _writeText('X');
+  }
+
+  // ===== notify 수신 시작/중지 =====
   Future<void> startListening() async {
     if (!isConnected) return;
-    final qc = _qc;
-    if (qc == null) return;
-
-    // 이미 구독 중이면 무시
     if (_notifySub != null) return;
 
+    final qc = _notifyQc;
+    if (qc == null) return;
+
     _notifySub = _ble.subscribeToCharacteristic(qc).listen(
-      _handleBleMidiPacket,
+      _handleNotifyMessage,
       onError: (e) {
-        debugPrint('BLE MIDI subscribe error: $e');
+        debugPrint('BLE notify error: $e');
       },
     );
   }
@@ -197,115 +180,24 @@ class BleMidiManager {
     _notifySub = null;
   }
 
-  // ===== BLE-MIDI 파싱 (NoteOn/NoteOff만) =====
-
-  void _handleBleMidiPacket(List<int> value) {
+  void _handleNotifyMessage(List<int> value) {
     if (value.isEmpty) return;
 
-    // 일반적으로 앞 2바이트는 timestamp header
-    int i = 0;
-    if (value.length >= 2 &&
-        (value[0] & 0x80) != 0 &&
-        (value[1] & 0x80) != 0) {
-      i = 2;
-    }
+    try {
+      final text = String.fromCharCodes(value).trim();
+      if (text.isEmpty) return;
 
-    int? runningStatus;
-
-    while (i < value.length) {
-      final b = value[i];
-
-      // 후보 status (MSB=1)
-      if ((b & 0x80) != 0) {
-        final status = b;
-        final dataLen = _dataLenForStatus(status);
-
-        // 유효한 status인지 검증: 뒤 data bytes가 <0x80 이어야 함
-        if (dataLen != null &&
-            i + dataLen < value.length &&
-            _allDataBytes(value, i + 1, dataLen)) {
-          runningStatus = status;
-          _emitIfNoteMessage(status, value.sublist(i + 1, i + 1 + dataLen));
-          i += 1 + dataLen;
-          continue;
-        }
-
-        // 위 조건을 못 맞추면 이 바이트는 timestamp일 가능성이 큼 → skip
-        i += 1;
-        continue;
-      }
-
-      // data byte(러닝 스테이터스)
-      if (runningStatus == null) {
-        i += 1;
-        continue;
-      }
-
-      final dataLen = _dataLenForStatus(runningStatus);
-      if (dataLen == null) {
-        i += 1;
-        continue;
-      }
-
-      if (dataLen == 1) {
-        if (b < 0x80) {
-          _emitIfNoteMessage(runningStatus, [b]);
-        }
-        i += 1;
-        continue;
-      }
-
-      // dataLen == 2
-      if (i + 1 < value.length &&
-          value[i] < 0x80 &&
-          value[i + 1] < 0x80) {
-        _emitIfNoteMessage(runningStatus, [value[i], value[i + 1]]);
-        i += 2;
-        continue;
-      }
-
-      i += 1;
+      debugPrint('BLE NOTIFY <- $text');
+      _messageCtrl.add(text);
+    } catch (e) {
+      debugPrint('BLE notify parse error: $e');
     }
   }
 
-  int? _dataLenForStatus(int status) {
-    final type = status & 0xF0;
-    if (type >= 0x80 && type <= 0xE0) {
-      if (type == 0xC0 || type == 0xD0) return 1; // Program/Channel pressure
-      return 2; // Note/CC/Pitch 등
-    }
-    return null; // SysEx 등은 여기선 무시
-  }
-
-  bool _allDataBytes(List<int> v, int start, int len) {
-    for (int k = 0; k < len; k++) {
-      if (v[start + k] >= 0x80) return false;
-    }
-    return true;
-  }
-
-  void _emitIfNoteMessage(int status, List<int> data) {
-    final type = status & 0xF0;
-    final ch = status & 0x0F;
-
-    // ✅ “입력 채널”만 noteOn/off 스트림으로 내보냄
-    if (ch != listenChannel) return;
-
-    if (type == 0x90 && data.length >= 2) {
-      final note = data[0];
-      final vel = data[1];
-      if (vel == 0) {
-        _noteOffCtrl.add(note);
-      } else {
-        _noteOnCtrl.add(note);
-      }
-      return;
-    }
-
-    if (type == 0x80 && data.length >= 2) {
-      final note = data[0];
-      _noteOffCtrl.add(note);
-      return;
-    }
+  void dispose() {
+    _notifySub?.cancel();
+    _connSub?.cancel();
+    _messageCtrl.close();
+    connectionState.dispose();
   }
 }
