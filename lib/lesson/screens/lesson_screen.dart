@@ -261,7 +261,8 @@ class _LessonScreenState extends State<LessonScreen> {
       _stop(midi);
       _play(midi, velocity: 95);
 
-      // 가이드 단계에서는 소리와 함께 현재 목표 LED도 바로 안내
+      // 가이드 단계에서는 현재 목표음만 T:로 전송한다.
+      // O:1/2/3 옥타브 범위는 _startCurrentStep()에서 기존처럼 유지한다.
       // ignore: discarded_futures
       BleEsp32Manager.I.sendTarget([midi]);
 
@@ -287,6 +288,8 @@ class _LessonScreenState extends State<LessonScreen> {
     // ignore: discarded_futures
     BleEsp32Manager.I.sendReset();
 
+    // 가이드 Stage에서도 O:1/2/3은 유지한다.
+    // 현재 목표음 T:는 자동 가이드 재생 시점에 별도로 전송한다.
     // ignore: discarded_futures
     BleEsp32Manager.I.sendOctaveGuide(widget.lesson.octaveGuide);
 
@@ -556,9 +559,7 @@ class _LessonScreenState extends State<LessonScreen> {
     return expected.length > 1;
   }
 
-  Set<int> _normalizeHighlightedNotesForKeyboard(Set<int> notes) {
-    if (notes.isEmpty) return <int>{};
-
+  Set<int> _normalizeHighlightedNotesForKeyboard(Iterable<int> notes) {
     final normalized = <int>{};
 
     for (final note in notes) {
@@ -577,6 +578,7 @@ class _LessonScreenState extends State<LessonScreen> {
 
     return normalized;
   }
+
 
   Widget _buildToastOverlay({required bool isTablet}) {
     if (_toastText == null) return const SizedBox.shrink();
