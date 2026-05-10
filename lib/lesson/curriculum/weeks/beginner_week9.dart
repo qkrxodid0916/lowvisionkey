@@ -1,11 +1,11 @@
 import '../curriculum_models.dart';
 
-class BeginnerWeek3 {
+class BeginnerWeek9 {
   static Stage stage() {
     return Stage(
-      id: 'week_3',
-      title: '3주차 도약 패턴 학습',
-      description: '순서대로 켜지는 건반 흐름을 보며, 건너뛰는 음 패턴을 익혀요.',
+      id: 'week_9',
+      title: '9주차 낮은 옥타브 도약 패턴 학습',
+      description: '낮은 옥타브 C3~B3에서 건너뛰는 음 패턴을 익혀요.',
       lessons: [
         _day1(),
         _day2(),
@@ -20,17 +20,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day1() {
     return CurriculumLesson(
-      id: 'week3_day1',
-      title: 'Day1 2음 점프 패턴',
+      id: 'week9_day1',
+      title: 'Day1 낮은 2음 점프 패턴',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.7),
       steps: [
         LessonPlanStep(
           id: 'day1_learn',
           title: '학습',
-          description: '순서대로 켜지는 2음 점프 패턴을 따라 치며 익혀요.',
+          description: '낮은 옥타브에서 순서대로 켜지는 2음 점프 패턴을 따라 치며 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _twoJumpPatterns,
@@ -42,7 +42,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day1_practice',
           title: '연습',
-          description: '2음 점프 패턴을 반복 연습해요.',
+          description: '낮은 옥타브 2음 점프 패턴을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _twoJumpPatterns,
@@ -54,7 +54,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day1_check',
           title: '확인',
-          description: '2음 점프 패턴을 확인해요.',
+          description: '낮은 옥타브 2음 점프 패턴을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _twoJumpPatterns,
@@ -69,17 +69,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day2() {
     return CurriculumLesson(
-      id: 'week3_day2',
-      title: 'Day2 3음 점멸 패턴',
+      id: 'week9_day2',
+      title: 'Day2 낮은 3음 점멸 패턴',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.72),
       steps: [
         LessonPlanStep(
           id: 'day2_review',
           title: '복습',
-          description: '2음 점프 패턴을 다시 확인해요.',
+          description: '낮은 옥타브 2음 점프 패턴을 다시 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _twoJumpPatterns,
@@ -91,7 +91,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day2_learn',
           title: '학습',
-          description: '도-미-솔처럼 순서대로 이어지는 3음 점멸 패턴을 익혀요.',
+          description: 'low C-low E-low G처럼 순서대로 이어지는 낮은 3음 점멸 패턴을 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _threeJumpPatterns,
@@ -103,7 +103,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day2_practice',
           title: '연습',
-          description: '3음 점멸 패턴을 반복 연습해요.',
+          description: '낮은 옥타브 3음 점멸 패턴을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _threeJumpPatterns,
@@ -115,7 +115,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day2_check',
           title: '확인',
-          description: '3음 점멸 패턴을 확인해요.',
+          description: '낮은 옥타브 3음 점멸 패턴을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _threeJumpPatterns,
@@ -130,17 +130,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day3() {
     return CurriculumLesson(
-      id: 'week3_day3',
-      title: 'Day3 역방향 점멸 패턴',
+      id: 'week9_day3',
+      title: 'Day3 낮은 역방향 점멸 패턴',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.74),
       steps: [
         LessonPlanStep(
           id: 'day3_review',
           title: '복습',
-          description: '3음 점멸 패턴을 짧게 복습해요.',
+          description: '낮은 옥타브 3음 점멸 패턴을 짧게 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _threeJumpPatterns,
@@ -152,7 +152,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day3_learn',
           title: '학습',
-          description: '솔-미-도처럼 반대 방향으로 이어지는 패턴을 익혀요.',
+          description: 'low G-low E-low C처럼 반대 방향으로 이어지는 낮은 패턴을 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _reverseJumpPatterns,
@@ -164,7 +164,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day3_practice',
           title: '연습',
-          description: '역방향 점멸 패턴을 반복 연습해요.',
+          description: '낮은 옥타브 역방향 점멸 패턴을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _reverseJumpPatterns,
@@ -176,7 +176,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day3_check',
           title: '확인',
-          description: '역방향 점멸 패턴을 확인해요.',
+          description: '낮은 옥타브 역방향 점멸 패턴을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _reverseJumpPatterns,
@@ -191,17 +191,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day4() {
     return CurriculumLesson(
-      id: 'week3_day4',
-      title: 'Day4 왕복 점멸 패턴',
+      id: 'week9_day4',
+      title: 'Day4 낮은 왕복 점멸 패턴',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.75),
       steps: [
         LessonPlanStep(
           id: 'day4_review',
           title: '복습',
-          description: '정방향과 역방향 패턴을 함께 복습해요.',
+          description: '낮은 옥타브 정방향과 역방향 패턴을 함께 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _day4ReviewMix,
@@ -213,7 +213,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day4_learn',
           title: '학습',
-          description: '켜졌다가 다시 돌아오는 왕복 점멸 패턴을 익혀요.',
+          description: '낮은 옥타브에서 켜졌다가 다시 돌아오는 왕복 점멸 패턴을 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _bounceJumpPatterns,
@@ -225,7 +225,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day4_practice',
           title: '연습',
-          description: '왕복 점멸 패턴을 반복 연습해요.',
+          description: '낮은 옥타브 왕복 점멸 패턴을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _bounceJumpPatterns,
@@ -237,7 +237,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day4_check',
           title: '확인',
-          description: '왕복 점멸 패턴을 확인해요.',
+          description: '낮은 옥타브 왕복 점멸 패턴을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _bounceJumpPatterns,
@@ -252,17 +252,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day5() {
     return CurriculumLesson(
-      id: 'week3_day5',
-      title: 'Day5 넓은 점프 패턴',
+      id: 'week9_day5',
+      title: 'Day5 낮은 넓은 점프 패턴',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.76),
       steps: [
         LessonPlanStep(
           id: 'day5_review',
           title: '복습',
-          description: '왕복 점멸 패턴을 짧게 복습해요.',
+          description: '낮은 옥타브 왕복 점멸 패턴을 짧게 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _bounceJumpPatterns,
@@ -274,7 +274,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day5_learn',
           title: '학습',
-          description: '도-솔, 레-라처럼 더 넓게 건너뛰는 패턴을 익혀요.',
+          description: 'low C-low G, low D-low A처럼 더 넓게 건너뛰는 낮은 패턴을 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _wideJumpPatterns,
@@ -286,7 +286,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day5_practice',
           title: '연습',
-          description: '넓은 점프 패턴을 반복 연습해요.',
+          description: '낮은 옥타브 넓은 점프 패턴을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _wideJumpPatterns,
@@ -298,7 +298,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day5_check',
           title: '확인',
-          description: '넓은 점프 패턴을 확인해요.',
+          description: '낮은 옥타브 넓은 점프 패턴을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _wideJumpPatterns,
@@ -313,17 +313,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day6() {
     return CurriculumLesson(
-      id: 'week3_day6',
-      title: 'Day6 랜덤 점멸 패턴',
+      id: 'week9_day6',
+      title: 'Day6 낮은 랜덤 점멸 패턴',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.78),
       steps: [
         LessonPlanStep(
           id: 'day6_review',
           title: '복습',
-          description: '지금까지 배운 점프 패턴을 함께 복습해요.',
+          description: '지금까지 배운 낮은 옥타브 점프 패턴을 함께 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -336,7 +336,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day6_learn',
           title: '학습',
-          description: '여러 점멸 패턴을 랜덤으로 익혀요.',
+          description: '여러 낮은 옥타브 점멸 패턴을 랜덤으로 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -349,7 +349,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day6_practice',
           title: '연습',
-          description: '점멸 패턴을 랜덤으로 반복 연습해요.',
+          description: '낮은 옥타브 점멸 패턴을 랜덤으로 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -362,7 +362,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day6_check',
           title: '확인',
-          description: '랜덤 점멸 패턴을 확인해요.',
+          description: '낮은 옥타브 랜덤 점멸 패턴을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -378,17 +378,17 @@ class BeginnerWeek3 {
 
   static CurriculumLesson _day7() {
     return CurriculumLesson(
-      id: 'week3_day7',
+      id: 'week9_day7',
       title: 'Day7 최종 확인',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.8),
       steps: [
         LessonPlanStep(
           id: 'day7_review',
           title: '복습',
-          description: '3주차 점멸 패턴을 전체 복습해요.',
+          description: '9주차 낮은 옥타브 점멸 패턴을 전체 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -401,7 +401,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day7_learn',
           title: '학습',
-          description: '최종 점검 전 점멸 흐름을 다시 정리해요.',
+          description: '최종 점검 전 낮은 옥타브 점멸 흐름을 다시 정리해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -414,7 +414,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day7_practice',
           title: '연습',
-          description: '최종 테스트 전 충분히 연습해요.',
+          description: '최종 테스트 전 낮은 옥타브 패턴을 충분히 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -427,7 +427,7 @@ class BeginnerWeek3 {
         LessonPlanStep(
           id: 'day7_check',
           title: '확인',
-          description: '3주차 점멸 패턴을 최종 확인해요.',
+          description: '9주차 낮은 옥타브 점멸 패턴을 최종 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _allJumpPatterns,
@@ -442,77 +442,77 @@ class BeginnerWeek3 {
   }
 
   static const List<List<int>> _twoJumpPatterns = [
-    [60], [64], // 도 미
-    [62], [65], // 레 파
-    [64], [67], // 미 솔
-    [65], [69], // 파 라
-    [67], [71], // 솔 시
+    [48], [52], // low C low E
+    [50], [53], // low D low F
+    [52], [55], // low E low G
+    [53], [57], // low F low A
+    [55], [59], // low G low B
   ];
 
   static const List<List<int>> _threeJumpPatterns = [
-    [60], [64], [67], // 도 미 솔
-    [62], [65], [69], // 레 파 라
-    [64], [67], [71], // 미 솔 시
+    [48], [52], [55], // low C low E 솔
+    [50], [53], [57], // low D low F 라
+    [52], [55], [59], // low E low G 시
   ];
 
   static const List<List<int>> _reverseJumpPatterns = [
-    [67], [64], [60], // 솔 미 도
-    [69], [65], [62], // 라 파 레
-    [71], [67], [64], // 시 솔 미
+    [55], [52], [48], // low G low E low C
+    [57], [53], [50], // low A low F low D
+    [59], [55], [52], // low B low G low E
   ];
 
   static const List<List<int>> _bounceJumpPatterns = [
-    [60], [64], [60], // 도 미 도
-    [62], [65], [62], // 레 파 레
-    [64], [67], [64], // 미 솔 미
-    [65], [69], [65], // 파 라 파
+    [48], [52], [48], // low C low E 도
+    [50], [53], [50], // low D low F 레
+    [52], [55], [52], // low E low G 미
+    [53], [57], [53], // low F low A 파
   ];
 
   static const List<List<int>> _wideJumpPatterns = [
-    [60], [67], // 도 솔
-    [62], [69], // 레 라
-    [64], [71], // 미 시
-    [60], [64], [67], // 도 미 솔
-    [60], [67], [64], // 도 솔 미
+    [48], [55], // low C low G
+    [50], [57], // low D low A
+    [52], [59], // low E low B
+    [48], [52], [55], // low C low E 솔
+    [48], [55], [52], // low C low G 미
   ];
 
   static const List<List<int>> _day4ReviewMix = [
-    [60], [64], [67],
-    [67], [64], [60],
-    [62], [65], [69],
-    [69], [65], [62],
+    [48], [52], [55],
+    [55], [52], [48],
+    [50], [53], [57],
+    [57], [53], [50],
   ];
 
   static const List<List<int>> _allJumpPatterns = [
-    [60], [64],
-    [62], [65],
-    [64], [67],
-    [65], [69],
-    [67], [71],
+    [48], [52],
+    [50], [53],
+    [52], [55],
+    [53], [57],
+    [55], [59],
 
-    [60], [64], [67],
-    [62], [65], [69],
-    [64], [67], [71],
+    [48], [52], [55],
+    [50], [53], [57],
+    [52], [55], [59],
 
-    [67], [64], [60],
-    [69], [65], [62],
-    [71], [67], [64],
+    [55], [52], [48],
+    [57], [53], [50],
+    [59], [55], [52],
 
-    [60], [64], [60],
-    [62], [65], [62],
-    [64], [67], [64],
-    [65], [69], [65],
+    [48], [52], [48],
+    [50], [53], [50],
+    [52], [55], [52],
+    [53], [57], [53],
 
-    [60], [67],
-    [62], [69],
-    [64], [71],
-    [60], [67], [64],
+    [48], [55],
+    [50], [57],
+    [52], [59],
+    [48], [55], [52],
   ];
 
   static LessonPlan _dummyPlan() {
     return const LessonPlan(
       type: LessonPlanType.singleNotes,
-      sequences: [[60]],
+      sequences: [[48]],
       totalQuestions: 1,
     );
   }

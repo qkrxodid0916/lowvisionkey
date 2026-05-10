@@ -1,11 +1,11 @@
 import '../curriculum_models.dart';
 
-class BeginnerWeek1 {
+class BeginnerWeek7 {
   static Stage stage() {
     return Stage(
-      id: 'week_1',
-      title: '1주차 단음 학습',
-      description: '중앙 옥타브 C4~B4의 건반 위치를 익혀요.',
+      id: 'week_7',
+      title: '7주차 낮은 옥타브 단음 학습',
+      description: '낮은 옥타브 C3~B3의 건반 위치를 익혀요.',
       lessons: [
         _day1(),
         _day2(),
@@ -20,23 +20,23 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day1() {
     return CurriculumLesson(
-      id: 'week1_day1',
-      title: 'Day1 C D E',
+      id: 'week7_day1',
+      title: 'Day1 low C low D low E',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.7),
       steps: [
         LessonPlanStep(
           id: 'day1_learn',
           title: '학습',
-          description: '도(C), 레(D), 미(E)를 익혀요.',
+          description: 'low C, low D, low E를 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
+              [48],
+              [50],
+              [52],
             ],
             totalQuestions: 8,
           ),
@@ -46,13 +46,13 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day1_practice',
           title: '연습',
-          description: '도, 레, 미를 반복 연습해요.',
+          description: 'low C, low D, low E를 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
+              [48],
+              [50],
+              [52],
             ],
             totalQuestions: 15,
           ),
@@ -62,13 +62,13 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day1_check',
           title: '확인',
-          description: '도, 레, 미를 확인해요.',
+          description: 'low C, low D, low E를 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
+              [48],
+              [50],
+              [52],
             ],
             totalQuestions: 12,
           ),
@@ -81,23 +81,23 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day2() {
     return CurriculumLesson(
-      id: 'week1_day2',
-      title: 'Day2 F G',
+      id: 'week7_day2',
+      title: 'Day2 low F low G',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.7),
       steps: [
         LessonPlanStep(
           id: 'day2_review',
           title: '복습',
-          description: '도, 레, 미를 복습해요.',
+          description: 'low C, low D, low E를 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
+              [48],
+              [50],
+              [52],
             ],
             totalQuestions: 8,
           ),
@@ -107,12 +107,12 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day2_learn',
           title: '학습',
-          description: '파(F), 솔(G)을 익혀요.',
+          description: 'low F, low G를 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [65],
-              [67],
+              [53],
+              [55],
             ],
             totalQuestions: 8,
           ),
@@ -122,15 +122,15 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day2_practice',
           title: '연습',
-          description: '도~솔까지 연습해요.',
+          description: 'low C~low G까지 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
-              [65],
-              [67],
+              [48],
+              [50],
+              [52],
+              [53],
+              [55],
             ],
             totalQuestions: 15,
           ),
@@ -140,15 +140,15 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day2_check',
           title: '확인',
-          description: '도~솔을 확인해요.',
+          description: 'low C~low G를 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
-              [65],
-              [67],
+              [48],
+              [50],
+              [52],
+              [53],
+              [55],
             ],
             totalQuestions: 12,
           ),
@@ -161,25 +161,25 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day3() {
     return CurriculumLesson(
-      id: 'week1_day3',
-      title: 'Day3 A B',
+      id: 'week7_day3',
+      title: 'Day3 low A low B',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.7),
       steps: [
         LessonPlanStep(
           id: 'day3_review',
           title: '복습',
-          description: '도~솔을 복습해요.',
+          description: 'low C~low G를 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
-              [65],
-              [67],
+              [48],
+              [50],
+              [52],
+              [53],
+              [55],
             ],
             totalQuestions: 8,
           ),
@@ -189,12 +189,12 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day3_learn',
           title: '학습',
-          description: '라(A), 시(B)를 익혀요.',
+          description: 'low A, low B를 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [69],
-              [71],
+              [57],
+              [59],
             ],
             totalQuestions: 8,
           ),
@@ -204,17 +204,17 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day3_practice',
           title: '연습',
-          description: '도~시까지 연습해요.',
+          description: 'low C~low B까지 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
-              [65],
-              [67],
-              [69],
-              [71],
+              [48],
+              [50],
+              [52],
+              [53],
+              [55],
+              [57],
+              [59],
             ],
             totalQuestions: 15,
           ),
@@ -224,17 +224,17 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day3_check',
           title: '확인',
-          description: '도~시를 확인해요.',
+          description: 'low C~low B를 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: [
-              [60],
-              [62],
-              [64],
-              [65],
-              [67],
-              [69],
-              [71],
+              [48],
+              [50],
+              [52],
+              [53],
+              [55],
+              [57],
+              [59],
             ],
             totalQuestions: 12,
           ),
@@ -247,9 +247,9 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day4() {
     return _fullRangeLesson(
-      id: 'week1_day4',
+      id: 'week7_day4',
       title: 'Day4 전체 복습',
-      description: '도~시 전체를 복습해요.',
+      description: 'low C~low B 전체를 복습해요.',
       practiceQuestions: 15,
       checkQuestions: 12,
       minAccuracy: 0.75,
@@ -259,9 +259,9 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day5() {
     return _fullRangeLesson(
-      id: 'week1_day5',
+      id: 'week7_day5',
       title: 'Day5 랜덤 인식',
-      description: '도~시를 랜덤으로 인식해요.',
+      description: 'low C~low B를 랜덤으로 인식해요.',
       practiceQuestions: 15,
       checkQuestions: 12,
       minAccuracy: 0.75,
@@ -271,9 +271,9 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day6() {
     return _fullRangeLesson(
-      id: 'week1_day6',
+      id: 'week7_day6',
       title: 'Day6 보완 연습',
-      description: '어려운 음을 포함해 전체를 다시 연습해요.',
+      description: '어려운 낮은 음을 포함해 전체를 다시 연습해요.',
       practiceQuestions: 15,
       checkQuestions: 12,
       minAccuracy: 0.78,
@@ -283,17 +283,17 @@ class BeginnerWeek1 {
 
   static CurriculumLesson _day7() {
     return CurriculumLesson(
-      id: 'week1_day7',
+      id: 'week7_day7',
       title: 'Day7 최종 확인',
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.8),
       steps: [
         LessonPlanStep(
           id: 'day7_review',
           title: '복습',
-          description: '최종 테스트 전 전체 복습이에요.',
+          description: '최종 테스트 전 낮은 옥타브 전체 복습이에요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
@@ -306,7 +306,7 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day7_learn',
           title: '학습',
-          description: '새로운 음 없이 최종 점검을 준비해요.',
+          description: '새로운 음 없이 낮은 옥타브 최종 점검을 준비해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
@@ -332,7 +332,7 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: 'day7_check',
           title: '확인',
-          description: '중앙 옥타브 도~시를 최종 확인해요.',
+          description: '낮은 옥타브 low C~low B를 최종 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
@@ -359,7 +359,7 @@ class BeginnerWeek1 {
       id: id,
       title: title,
       mode: LessonInputMode.both,
-      octaveGuide: 2,
+      octaveGuide: 1,
       plan: _dummyPlan(),
       passRule: PassRule(minAccuracy: minAccuracy),
       steps: [
@@ -379,7 +379,7 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: '${id}_learn',
           title: '학습',
-          description: '새로운 음 없이 전체 범위를 다시 익혀요.',
+          description: '새로운 음 없이 낮은 옥타브 전체 범위를 다시 익혀요.',
           plan: LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
@@ -392,7 +392,7 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: '${id}_practice',
           title: '연습',
-          description: '전체 범위를 반복 연습해요.',
+          description: '낮은 옥타브 전체 범위를 반복 연습해요.',
           plan: LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
@@ -405,7 +405,7 @@ class BeginnerWeek1 {
         LessonPlanStep(
           id: '${id}_check',
           title: '확인',
-          description: '전체 범위를 확인해요.',
+          description: '낮은 옥타브 전체 범위를 확인해요.',
           plan: LessonPlan(
             type: LessonPlanType.singleNotes,
             sequences: _fullRange,
@@ -420,19 +420,19 @@ class BeginnerWeek1 {
   }
 
   static const List<List<int>> _fullRange = [
-    [60],
-    [62],
-    [64],
-    [65],
-    [67],
-    [69],
-    [71],
+    [48],
+    [50],
+    [52],
+    [53],
+    [55],
+    [57],
+    [59],
   ];
 
   static LessonPlan _dummyPlan() {
     return const LessonPlan(
       type: LessonPlanType.singleNotes,
-      sequences: [[60]],
+      sequences: [[48]],
       totalQuestions: 1,
     );
   }

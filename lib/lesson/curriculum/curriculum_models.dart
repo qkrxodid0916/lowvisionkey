@@ -58,6 +58,13 @@ class CurriculumLesson {
   final String title;
   final LessonInputMode mode;
 
+  /// ✅ ESP32 옥타브 가이드
+  /// 0 = 끔
+  /// 1 = C3~B3
+  /// 2 = C4~B4
+  /// 3 = C5~B5
+  final int octaveGuide;
+
   /// ✅ (구버전 호환용) 레슨 플랜
   /// 단계 시스템(steps)을 쓰면 화면에서 step.plan을 사용하고,
   /// steps가 없으면 이 plan을 단일 단계로 간주한다.
@@ -74,6 +81,7 @@ class CurriculumLesson {
     required this.id,
     required this.title,
     required this.mode,
+    this.octaveGuide = 0,
     required this.plan,
     required this.passRule,
     this.steps = const <LessonPlanStep>[],
@@ -123,5 +131,9 @@ class LessonPlan {
 class PassRule {
   final double minAccuracy; // 0.8 = 80%
   final int? maxFails;      // 선택: 실패 제한
-  const PassRule({required this.minAccuracy, this.maxFails});
+
+  const PassRule({
+    required this.minAccuracy,
+    this.maxFails,
+  });
 }

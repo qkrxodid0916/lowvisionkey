@@ -159,6 +159,37 @@ class BleMidiManager {
     await _writeText('X');
   }
 
+  /// 옥타브 가이드
+  /// 0 = 끄기
+  /// 1 = C3~B3
+  /// 2 = C4~B4
+  /// 3 = C5~B5
+  Future<void> sendOctaveGuide(int octave) async {
+    if (octave < 0 || octave > 3) {
+      debugPrint('sendOctaveGuide skipped: invalid octave $octave');
+      return;
+    }
+
+    await _writeText('O:$octave');
+  }
+
+  /// 옥타브 가이드 끄기
+  Future<void> clearOctaveGuide() async {
+    await sendOctaveGuide(0);
+  }
+
+  /// 정답 피드백: 초록색
+  Future<void> sendCorrectFeedback() async {
+    await _writeText('C');
+  }
+
+  /// 오답 피드백: 빨간색
+  /// ESP32 쪽에서 W 누적 횟수에 따라 3번부터 노란색 가이드
+  Future<void> sendWrongFeedback() async {
+    await _writeText('W');
+  }
+
+
   // ===== notify 수신 시작/중지 =====
   Future<void> startListening() async {
     if (!isConnected) return;

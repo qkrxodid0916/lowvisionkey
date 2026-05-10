@@ -25,6 +25,7 @@ class BeginnerWeek2 {
       id: 'week2_day1',
       title: 'Day1 상행 이동 1',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.7),
       steps: [
@@ -79,6 +80,7 @@ class BeginnerWeek2 {
       id: 'week2_day2',
       title: 'Day2 상행 이동 2',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.7),
       steps: [
@@ -141,6 +143,7 @@ class BeginnerWeek2 {
       id: 'week2_day3',
       title: 'Day3 하행 이동',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.72),
       steps: [
@@ -201,6 +204,7 @@ class BeginnerWeek2 {
       id: 'week2_day4',
       title: 'Day4 상·하행 결합',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.75),
       steps: [
@@ -261,6 +265,7 @@ class BeginnerWeek2 {
       id: 'week2_day5',
       title: 'Day5 도약 이동',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.75),
       steps: [
@@ -321,6 +326,7 @@ class BeginnerWeek2 {
       id: 'week2_day6',
       title: 'Day6 랜덤 이동',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.78),
       steps: [
@@ -385,6 +391,7 @@ class BeginnerWeek2 {
       id: 'week2_day7',
       title: 'Day7 최종 확인',
       mode: LessonInputMode.both,
+      octaveGuide: 2,
       plan: _dummyPlan(),
       passRule: const PassRule(minAccuracy: 0.8),
       steps: [

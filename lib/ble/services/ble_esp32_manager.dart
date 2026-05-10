@@ -293,12 +293,34 @@ class BleEsp32Manager {
     await sendRaw('W');
   }
 
+  Future<void> sendCorrect() async {
+    await sendRaw('C');
+  }
+
   Future<void> sendReset() async {
     await sendRaw('R');
   }
 
   Future<void> sendTest() async {
     await sendRaw('X');
+  }
+
+  /// 옥타브 가이드
+  /// 0 = 끄기
+  /// 1 = C3~B3
+  /// 2 = C4~B4
+  /// 3 = C5~B5
+  Future<void> sendOctaveGuide(int octave) async {
+    if (octave < 0 || octave > 3) {
+      debugPrint('sendOctaveGuide skipped: invalid octave $octave');
+      return;
+    }
+
+    await sendRaw('O:$octave');
+  }
+
+  Future<void> clearOctaveGuide() async {
+    await sendOctaveGuide(0);
   }
 
   Future<void> dispose() async {

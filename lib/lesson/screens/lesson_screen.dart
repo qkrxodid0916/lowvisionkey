@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_midi_pro/flutter_midi_pro.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -48,6 +47,7 @@ class _LessonScreenState extends State<LessonScreen> {
   int _maxMidi = 71;
 
   final Set<int> _pressedNotes = <int>{};
+  final Map<int, int> _touchNoteMap = <int, int>{};
 
   late AbstractLessonRunner _runner;
 
@@ -74,6 +74,10 @@ class _LessonScreenState extends State<LessonScreen> {
   late final MidiInputBuffer _inputBuffer;
   DateTime _acceptInputAfter = DateTime.fromMillisecondsSinceEpoch(0);
 
+  int? _lastAutoPlayedMidi;
+  int? _lastAutoPlayedQuestionIndex;
+  int _autoPromptSerial = 0;
+
   Course get _course => _resolveCourse(widget.courseId);
   Stage get _stage => _course.stages[widget.stageIndex];
   List<LessonPlanStep> get _steps => widget.lesson.effectiveSteps;
@@ -82,11 +86,24 @@ class _LessonScreenState extends State<LessonScreen> {
   bool get _isLearnStep => _currentStep.id.contains('learn');
   bool get _isCheckStep => _currentStep.id.contains('check');
 
+  bool get _isBeginnerGuideStage {
+    return const {
+      'beginner_middle_octave_guide',
+      'beginner_high_octave_guide',
+      'beginner_low_octave_guide',
+      'beginner_half_step_guide',
+    }.contains(_stage.id);
+  }
+
+  bool get _shouldAutoPlayGuidePrompt =>
+      _isBeginnerGuideStage && _currentStep.guideEnabled && !_isCheckStep;
+
   CurriculumLesson _lessonForRunnerFromStep() {
     return CurriculumLesson(
       id: '${widget.lesson.id}:${_currentStep.id}',
       title: '${widget.lesson.title} · ${_currentStep.title}',
       mode: widget.lesson.mode,
+      octaveGuide: widget.lesson.octaveGuide,
       plan: _currentStep.plan,
       passRule: _currentStep.passRule,
       steps: const <LessonPlanStep>[],
@@ -209,7 +226,50 @@ class _LessonScreenState extends State<LessonScreen> {
 
   void _resetInputGate() {
     _inputBuffer.reset();
+    _touchNoteMap.clear();
     _acceptInputAfter = DateTime.now().add(const Duration(milliseconds: 80));
+  }
+
+  void _resetGuideAutoPlay() {
+    _lastAutoPlayedMidi = null;
+    _lastAutoPlayedQuestionIndex = null;
+    _autoPromptSerial += 1;
+  }
+
+  void _autoPlayExpectedIfNeeded(int midi) {
+    if (!_shouldAutoPlayGuidePrompt) return;
+    if (_loading || _sfId == null) return;
+    if (_runner.isCompleted.value == true) return;
+
+    final questionIndex = _runner.currentIndex;
+
+    if (_lastAutoPlayedMidi == midi &&
+        _lastAutoPlayedQuestionIndex == questionIndex) {
+      return;
+    }
+
+    _lastAutoPlayedMidi = midi;
+    _lastAutoPlayedQuestionIndex = questionIndex;
+
+    final serial = ++_autoPromptSerial;
+
+    Future.delayed(const Duration(milliseconds: 220), () async {
+      if (!mounted) return;
+      if (serial != _autoPromptSerial) return;
+      if (_runner.isCompleted.value == true) return;
+
+      _stop(midi);
+      _play(midi, velocity: 95);
+
+      // 가이드 단계에서는 소리와 함께 현재 목표 LED도 바로 안내
+      // ignore: discarded_futures
+      BleEsp32Manager.I.sendTarget([midi]);
+
+      await Future.delayed(const Duration(milliseconds: 700));
+
+      if (!mounted) return;
+      _stop(midi);
+    });
   }
 
   void _startCurrentStep() {
@@ -220,10 +280,15 @@ class _LessonScreenState extends State<LessonScreen> {
     _maxMidi = 71;
 
     _resetInputGate();
+    _resetGuideAutoPlay();
     _runner.start();
 
-    // 레슨 시작마다 LED를 강제로 초기화하지 않음.
-    // 가이드 전송은 BleLessonRunner의 onGuideNotesChanged가 처리함.
+    // ESP32 LED 상태 초기화 후, 현재 레슨의 옥타브 범위 표시
+    // ignore: discarded_futures
+    BleEsp32Manager.I.sendReset();
+
+    // ignore: discarded_futures
+    BleEsp32Manager.I.sendOctaveGuide(widget.lesson.octaveGuide);
 
     _toastText = null;
     _flashWrong = false;
@@ -318,6 +383,7 @@ class _LessonScreenState extends State<LessonScreen> {
     }
 
     _resetInputGate();
+    _resetGuideAutoPlay();
 
     if (restart) {
       _startCurrentStep();
@@ -429,6 +495,12 @@ class _LessonScreenState extends State<LessonScreen> {
 
     _runner.onInput(notes);
 
+    // ✅ 정답 처리: 초록 2번 점멸
+    if (_runner.lastHit.value == true) {
+      // ignore: discarded_futures
+      BleEsp32Manager.I.sendCorrect();
+    }
+
     if (_runner.lastHit.value == false) {
       debugPrint('LESSON WRONG -> count=${_runner.wrongCountOnStep.value}');
       debugPrint('EXPECTED -> $expectedBeforeInput');
@@ -438,7 +510,8 @@ class _LessonScreenState extends State<LessonScreen> {
       BleEsp32Manager.I.sendWrong();
 
       // 2번 이상 틀렸을 때만 정답 가이드 표시
-      if (_runner.wrongCountOnStep.value >= 2 &&
+      if (_currentStep.guideEnabled &&
+          _runner.wrongCountOnStep.value >= 2 &&
           expectedBeforeInput != null &&
           expectedBeforeInput.isNotEmpty) {
 
@@ -481,6 +554,28 @@ class _LessonScreenState extends State<LessonScreen> {
     final expected = _runner.currentExpected.value;
     if (expected == null) return false;
     return expected.length > 1;
+  }
+
+  Set<int> _normalizeHighlightedNotesForKeyboard(Set<int> notes) {
+    if (notes.isEmpty) return <int>{};
+
+    final normalized = <int>{};
+
+    for (final note in notes) {
+      if (note >= _minMidi && note <= _maxMidi) {
+        normalized.add(note);
+        continue;
+      }
+
+      for (int candidate = _minMidi; candidate <= _maxMidi; candidate++) {
+        if (candidate % 12 == note % 12) {
+          normalized.add(candidate);
+          break;
+        }
+      }
+    }
+
+    return normalized;
   }
 
   Widget _buildToastOverlay({required bool isTablet}) {
@@ -572,6 +667,13 @@ class _LessonScreenState extends State<LessonScreen> {
         final done = _runner.isCompleted.value;
         final midi = (expected == null || expected.isEmpty) ? 60 : expected.first;
 
+        if (!done && expected != null && expected.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _autoPlayExpectedIfNeeded(midi);
+          });
+        }
+
         if (done) {
           return Expanded(
             child: Center(
@@ -615,7 +717,7 @@ class _LessonScreenState extends State<LessonScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              _solfegeForMidi(midi),
+              _displayNameForMidi(midi),
               style: TextStyle(
                 fontSize: isTablet ? 76 : 56,
                 fontWeight: FontWeight.w900,
@@ -624,7 +726,7 @@ class _LessonScreenState extends State<LessonScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              _letterForMidi(midi),
+              _octaveNameForMidi(midi),
               style: TextStyle(
                 fontSize: isTablet ? 30 : 24,
                 fontWeight: FontWeight.w800,
@@ -672,7 +774,7 @@ class _LessonScreenState extends State<LessonScreen> {
       case _PromptVariant.solfege:
         return Center(
           child: Text(
-            _solfegeForMidi(midi),
+            _displayNameForMidi(midi),
             style: TextStyle(
               fontSize: isTablet ? 96 : 70,
               fontWeight: FontWeight.w900,
@@ -684,7 +786,7 @@ class _LessonScreenState extends State<LessonScreen> {
       case _PromptVariant.letter:
         return Center(
           child: Text(
-            _letterForMidi(midi),
+            _displayNameForMidi(midi),
             style: TextStyle(
               fontSize: isTablet ? 96 : 70,
               fontWeight: FontWeight.w900,
@@ -725,7 +827,8 @@ class _LessonScreenState extends State<LessonScreen> {
       valueListenable: _runner.wrongCountOnStep,
       builder: (context, wrongCount, _) {
         final guideOn = _currentStep.guideEnabled;
-        final targetSet = guideOn ? _runner.highlightedNotes() : <int>{};
+        final rawTargetSet = guideOn ? _runner.highlightedNotes() : <int>{};
+        final targetSet = _normalizeHighlightedNotesForKeyboard(rawTargetSet);
 
         final showHint = guideOn && wrongCount >= 2;
         final highlighted = showHint ? (_hintPulseOn ? targetSet : <int>{}) : targetSet;
@@ -740,10 +843,12 @@ class _LessonScreenState extends State<LessonScreen> {
               highlightedNotes: highlighted,
               onNoteOn: (midi, velocity) async {
                 final normalizedMidi = _normalizeTouchMidiToExpectedOctave(midi);
+                _touchNoteMap[midi] = normalizedMidi;
                 await _handleNoteOn(normalizedMidi, velocity: velocity);
               },
               onNoteOff: (midi) {
-                _handleNoteOff(midi);
+                final normalizedMidi = _touchNoteMap.remove(midi) ?? midi;
+                _handleNoteOff(normalizedMidi);
               },
             ),
           ),
@@ -870,46 +975,88 @@ class _LessonScreenState extends State<LessonScreen> {
     return _PromptVariant.values[random.nextInt(_PromptVariant.values.length)];
   }
 
-  String _solfegeForMidi(int midi) {
-    switch (midi % 12) {
-      case 0:
-        return '도';
-      case 2:
-        return '레';
-      case 4:
-        return '미';
-      case 5:
-        return '파';
-      case 7:
-        return '솔';
-      case 9:
-        return '라';
-      case 11:
-        return '시';
-      default:
-        return '?';
-    }
-  }
-
   String _letterForMidi(int midi) {
-    switch (midi % 12) {
+    final pc = midi % 12;
+
+    if (_accidentalStyle == AccidentalStyle.flat) {
+      switch (pc) {
+        case 0:
+          return 'C';
+        case 1:
+          return 'D♭';
+        case 2:
+          return 'D';
+        case 3:
+          return 'E♭';
+        case 4:
+          return 'E';
+        case 5:
+          return 'F';
+        case 6:
+          return 'G♭';
+        case 7:
+          return 'G';
+        case 8:
+          return 'A♭';
+        case 9:
+          return 'A';
+        case 10:
+          return 'B♭';
+        case 11:
+          return 'B';
+        default:
+          return '?';
+      }
+    }
+
+    switch (pc) {
       case 0:
         return 'C';
+      case 1:
+        return 'C#';
       case 2:
         return 'D';
+      case 3:
+        return 'D#';
       case 4:
         return 'E';
       case 5:
         return 'F';
+      case 6:
+        return 'F#';
       case 7:
         return 'G';
+      case 8:
+        return 'G#';
       case 9:
         return 'A';
+      case 10:
+        return 'A#';
       case 11:
         return 'B';
       default:
         return '?';
     }
+  }
+
+  String _displayNameForMidi(int midi) {
+    final letter = _letterForMidi(midi);
+
+    if (midi >= 72 && midi <= 83) {
+      return 'hi $letter';
+    }
+
+    if (midi >= 48 && midi <= 59) {
+      return 'low $letter';
+    }
+
+    return letter;
+  }
+
+  String _octaveNameForMidi(int midi) {
+    final letter = _letterForMidi(midi);
+    final octave = (midi ~/ 12) - 1;
+    return '$letter$octave';
   }
 }
 

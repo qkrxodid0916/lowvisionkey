@@ -1,8 +1,28 @@
-const List<String> solfege = [
-  '도', '도#', '레', '레#', '미', '파',
-  '파#', '솔', '솔#', '라', '라#', '시'
+const List<String> noteLetters = [
+  'C', 'C#', 'D', 'D#', 'E', 'F',
+  'F#', 'G', 'G#', 'A', 'A#', 'B'
 ];
 
-String midiToSolfege(int midi) {
-  return solfege[midi % 12];
+String midiToLetter(int midi) {
+  return noteLetters[midi % 12];
+}
+
+String midiToDisplayName(int midi) {
+  final letter = midiToLetter(midi);
+
+  if (midi >= 72 && midi <= 83) {
+    return 'hi $letter';
+  }
+
+  if (midi >= 48 && midi <= 59) {
+    return 'low $letter';
+  }
+
+  return letter;
+}
+
+String midiToOctaveName(int midi) {
+  final letter = midiToLetter(midi);
+  final octave = (midi ~/ 12) - 1;
+  return '$letter$octave';
 }
