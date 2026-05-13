@@ -12,17 +12,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
+  // ✅ 하나의 인스턴스만 사용
+  final _googleSignIn = GoogleSignIn();
+
   /// ✅ Google 로그인
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
 
     try {
-      // 계정 선택 꼬임 방지 (선택)
+      // 계정 선택 꼬임 방지
       try {
-        await GoogleSignIn().disconnect();
+        await _googleSignIn.disconnect();
       } catch (_) {}
 
-      final googleUser = await GoogleSignIn().signIn();
+      final googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         setState(() => _isLoading = false);
