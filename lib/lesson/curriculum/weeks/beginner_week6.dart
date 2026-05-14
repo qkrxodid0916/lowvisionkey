@@ -131,7 +131,7 @@ class BeginnerWeek6 {
   static CurriculumLesson _day3() {
     return CurriculumLesson(
       id: 'week6_day3',
-      title: 'Day3 높은 역방향 점멸 패턴',
+      title: 'Day3 높은 역점멸 패턴',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),

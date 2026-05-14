@@ -1,11 +1,11 @@
 import '../curriculum_models.dart';
 
-class BeginnerWeek5 {
+class BeginnerWeek11 {
   static Stage stage() {
     return Stage(
-      id: 'week_5',
-      title: '5주차 높은 옥타브 음 이동 학습',
-      description: '높은 옥타브 C5~B5 안에서 음의 상행·하행 이동을 익혀요.',
+      id: 'week_11',
+      title: '11주차 높은 옥타브 반음 학습',
+      description: '높은 옥타브의 검은 건반(hi C#~hi A#)을 집중적으로 익혀요.',
       lessons: [
         _day1(),
         _day2(),
@@ -18,10 +18,11 @@ class BeginnerWeek5 {
     );
   }
 
+  // ── Day 1 : hi C# hi D# 집중 ────────────────────────────────────────────
   static CurriculumLesson _day1() {
     return CurriculumLesson(
-      id: 'week5_day1',
-      title: 'Day1 hi C~hi G 상행',
+      id: 'week11_day1',
+      title: 'Day1 hi C# hi D#',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),
@@ -30,13 +31,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day1_learn',
           title: '학습',
-          description: 'hi C에서 hi G까지 위로 올라가는 흐름을 익혀요.',
+          description: 'hi C#과 hi D# 검은 건반을 LED 가이드를 보며 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: [
-              [72], [74], [76], [77], [79],
-            ],
-            totalQuestions: 8,
+            sequences: _day1Learn,
+            totalQuestions: 10,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -44,13 +43,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day1_practice',
           title: '연습',
-          description: 'hi C~hi G 상행을 반복 연습해요.',
+          description: 'hi C#, hi D# 검은 건반과 주변 흰 건반을 함께 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: [
-              [72], [74], [76], [77], [79],
-            ],
-            totalQuestions: 12,
+            sequences: _day1Practice,
+            totalQuestions: 16,
           ),
           passRule: const PassRule(minAccuracy: 0.7),
           guideEnabled: true,
@@ -58,13 +55,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day1_check',
           title: '확인',
-          description: 'hi C~hi G 상행 흐름을 확인해요.',
+          description: 'hi C#, hi D# 검은 건반 인식을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: [
-              [72], [74], [76], [77], [79],
-            ],
-            totalQuestions: 10,
+            sequences: _day1Practice,
+            totalQuestions: 13,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.7),
           guideEnabled: false,
@@ -73,10 +69,11 @@ class BeginnerWeek5 {
     );
   }
 
+  // ── Day 2 : hi F# hi G# hi A# 집중 ─────────────────────────────────────
   static CurriculumLesson _day2() {
     return CurriculumLesson(
-      id: 'week5_day2',
-      title: 'Day2 hi C~hi B 상행',
+      id: 'week11_day2',
+      title: 'Day2 hi F# hi G# hi A#',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),
@@ -85,13 +82,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day2_review',
           title: '복습',
-          description: 'hi C~hi G 상행을 다시 확인해요.',
+          description: 'hi C#, hi D# 검은 건반을 짧게 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: [
-              [72], [74], [76], [77], [79],
-            ],
-            totalQuestions: 6,
+            sequences: _day1Learn,
+            totalQuestions: 8,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -99,10 +95,10 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day2_learn',
           title: '학습',
-          description: 'hi C에서 hi B까지 높은 옥타브 상행을 익혀요.',
+          description: 'hi F#, hi G#, hi A# 검은 건반을 LED 가이드를 보며 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeAsc,
+            sequences: _day2Learn,
             totalQuestions: 10,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
@@ -111,11 +107,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day2_practice',
           title: '연습',
-          description: 'hi C~hi B 상행을 반복 연습해요.',
+          description: 'hi F#, hi G#, hi A# 검은 건반과 주변 흰 건반을 함께 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeAsc,
-            totalQuestions: 14,
+            sequences: _day2Practice,
+            totalQuestions: 16,
           ),
           passRule: const PassRule(minAccuracy: 0.7),
           guideEnabled: true,
@@ -123,11 +119,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day2_check',
           title: '확인',
-          description: '높은 옥타브 상행을 확인해요.',
+          description: 'hi F#, hi G#, hi A# 검은 건반 인식을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeAsc,
-            totalQuestions: 10,
+            sequences: _day2Practice,
+            totalQuestions: 13,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.7),
           guideEnabled: false,
@@ -136,10 +133,11 @@ class BeginnerWeek5 {
     );
   }
 
+  // ── Day 3 : 검은 건반 5개 전체 ──────────────────────────────────────────
   static CurriculumLesson _day3() {
     return CurriculumLesson(
-      id: 'week5_day3',
-      title: 'Day3 높은 옥타브 하행',
+      id: 'week11_day3',
+      title: 'Day3 고음 검은 건반 전체',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),
@@ -148,11 +146,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day3_review',
           title: '복습',
-          description: '높은 옥타브 상행 흐름을 짧게 복습해요.',
+          description: '높은 옥타브 검은 건반 5개를 순서대로 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeAsc,
-            totalQuestions: 6,
+            sequences: _allBlackKeys,
+            totalQuestions: 10,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -160,11 +158,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day3_learn',
           title: '학습',
-          description: 'hi B에서 hi C까지 내려오는 흐름을 익혀요.',
+          description: 'hi C#부터 hi A#까지 검은 건반 5개를 전체적으로 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeDesc,
-            totalQuestions: 10,
+            sequences: _day3Learn,
+            totalQuestions: 14,
           ),
           passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
@@ -172,11 +170,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day3_practice',
           title: '연습',
-          description: '높은 옥타브 하행 이동을 반복 연습해요.',
+          description: '높은 옥타브 검은 건반 5개를 랜덤으로 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeDesc,
-            totalQuestions: 14,
+            sequences: _day3Learn,
+            totalQuestions: 18,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.72),
           guideEnabled: true,
@@ -184,11 +183,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day3_check',
           title: '확인',
-          description: '높은 옥타브 하행 흐름을 확인해요.',
+          description: '높은 옥타브 검은 건반 5개 인식을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _fullRangeDesc,
-            totalQuestions: 10,
+            sequences: _day3Learn,
+            totalQuestions: 14,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.72),
           guideEnabled: false,
@@ -197,35 +197,37 @@ class BeginnerWeek5 {
     );
   }
 
+  // ── Day 4 : 흰 건반 + 반음 혼합 ─────────────────────────────────────────
   static CurriculumLesson _day4() {
     return CurriculumLesson(
-      id: 'week5_day4',
-      title: 'Day4 높은 옥타브 상·하행',
+      id: 'week11_day4',
+      title: 'Day4 고음 흰+검은 혼합',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),
-      passRule: const PassRule(minAccuracy: 0.75),
+      passRule: const PassRule(minAccuracy: 0.74),
       steps: [
         LessonPlanStep(
           id: 'day4_review',
           title: '복습',
-          description: '높은 옥타브 상행과 하행을 함께 복습해요.',
+          description: '높은 옥타브 검은 건반 5개를 랜덤으로 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _ascDescMix,
-            totalQuestions: 8,
+            sequences: _day3Learn,
+            totalQuestions: 10,
+            shuffleQuestions: true,
           ),
-          passRule: const PassRule(minAccuracy: 0.65),
+          passRule: const PassRule(minAccuracy: 0.6),
           guideEnabled: true,
         ),
         LessonPlanStep(
           id: 'day4_learn',
           title: '학습',
-          description: '높은 옥타브에서 오르내리는 흐름을 자연스럽게 연결해요.',
+          description: '높은 옥타브 흰 건반과 검은 건반을 섞어서 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _ascDescMix,
-            totalQuestions: 10,
+            sequences: _day4Mixed,
+            totalQuestions: 14,
           ),
           passRule: const PassRule(minAccuracy: 0.65),
           guideEnabled: true,
@@ -233,35 +235,38 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day4_practice',
           title: '연습',
-          description: '높은 옥타브 상행과 하행이 섞인 흐름을 연습해요.',
+          description: '높은 옥타브 흰+검은 건반 혼합을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _ascDescMix,
-            totalQuestions: 14,
+            sequences: _day4Mixed,
+            totalQuestions: 18,
+            shuffleQuestions: true,
           ),
-          passRule: const PassRule(minAccuracy: 0.75),
+          passRule: const PassRule(minAccuracy: 0.74),
           guideEnabled: true,
         ),
         LessonPlanStep(
           id: 'day4_check',
           title: '확인',
-          description: '높은 옥타브 상·하행 결합을 확인해요.',
+          description: '높은 옥타브 흰+검은 건반 혼합 인식을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _ascDescMix,
-            totalQuestions: 12,
+            sequences: _day4Mixed,
+            totalQuestions: 14,
+            shuffleQuestions: true,
           ),
-          passRule: const PassRule(minAccuracy: 0.75),
+          passRule: const PassRule(minAccuracy: 0.74),
           guideEnabled: false,
         ),
       ],
     );
   }
 
+  // ── Day 5 : 반음 이동 패턴 ──────────────────────────────────────────────
   static CurriculumLesson _day5() {
     return CurriculumLesson(
-      id: 'week5_day5',
-      title: 'Day5 높은 옥타브 도약',
+      id: 'week11_day5',
+      title: 'Day5 고음 반음 이동 패턴',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),
@@ -270,11 +275,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day5_review',
           title: '복습',
-          description: '높은 옥타브에서 붙어 있는 음 이동을 짧게 복습해요.',
+          description: '높은 옥타브 흰+검은 건반 혼합을 짧게 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _ascDescMix,
-            totalQuestions: 8,
+            sequences: _day4Mixed,
+            totalQuestions: 10,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.65),
           guideEnabled: true,
@@ -282,11 +288,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day5_learn',
           title: '학습',
-          description: '높은 옥타브에서 한 칸 건너 뛰는 도약 이동을 익혀요.',
+          description: '높은 옥타브에서 흰 건반과 인접한 검은 건반을 오가는 반음 이동 패턴을 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _skipMoves,
-            totalQuestions: 10,
+            sequences: _day5HalfStepMove,
+            totalQuestions: 14,
           ),
           passRule: const PassRule(minAccuracy: 0.65),
           guideEnabled: true,
@@ -294,11 +300,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day5_practice',
           title: '연습',
-          description: '높은 옥타브 도약 이동을 반복 연습해요.',
+          description: '높은 옥타브 반음 이동 패턴을 반복 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _skipMoves,
-            totalQuestions: 14,
+            sequences: _day5HalfStepMove,
+            totalQuestions: 18,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.75),
           guideEnabled: true,
@@ -306,11 +313,12 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day5_check',
           title: '확인',
-          description: '높은 옥타브 도약 이동을 확인해요.',
+          description: '높은 옥타브 반음 이동 패턴 인식을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _skipMoves,
-            totalQuestions: 12,
+            sequences: _day5HalfStepMove,
+            totalQuestions: 14,
+            shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.75),
           guideEnabled: false,
@@ -319,10 +327,11 @@ class BeginnerWeek5 {
     );
   }
 
+  // ── Day 6 : 전체 랜덤 ───────────────────────────────────────────────────
   static CurriculumLesson _day6() {
     return CurriculumLesson(
-      id: 'week5_day6',
-      title: 'Day6 높은 옥타브 랜덤',
+      id: 'week11_day6',
+      title: 'Day6 고음 랜덤',
       mode: LessonInputMode.both,
       octaveGuide: 3,
       plan: _dummyPlan(),
@@ -331,10 +340,10 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day6_review',
           title: '복습',
-          description: '높은 옥타브 상행, 하행, 도약 이동을 함께 복습해요.',
+          description: '높은 옥타브 반음 이동 패턴을 짧게 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
+            sequences: _day5HalfStepMove,
             totalQuestions: 10,
             shuffleQuestions: true,
           ),
@@ -344,11 +353,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day6_learn',
           title: '학습',
-          description: '높은 옥타브의 다양한 이동 패턴을 랜덤으로 익혀요.',
+          description: '높은 옥타브 흰+검은 건반 전체를 랜덤으로 익혀요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 10,
+            sequences: _day6FullRandom,
+            totalQuestions: 14,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.65),
@@ -357,11 +366,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day6_practice',
           title: '연습',
-          description: '높은 옥타브 안에서 랜덤 이동을 연습해요.',
+          description: '높은 옥타브 전체 건반을 랜덤으로 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 16,
+            sequences: _day6FullRandom,
+            totalQuestions: 20,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.78),
@@ -370,11 +379,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day6_check',
           title: '확인',
-          description: '높은 옥타브 랜덤 이동을 확인해요.',
+          description: '높은 옥타브 전체 건반 랜덤 인식을 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 12,
+            sequences: _day6FullRandom,
+            totalQuestions: 16,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.78),
@@ -384,9 +393,10 @@ class BeginnerWeek5 {
     );
   }
 
+  // ── Day 7 : 최종 확인 ────────────────────────────────────────────────────
   static CurriculumLesson _day7() {
     return CurriculumLesson(
-      id: 'week5_day7',
+      id: 'week11_day7',
       title: 'Day7 최종 확인',
       mode: LessonInputMode.both,
       octaveGuide: 3,
@@ -396,11 +406,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day7_review',
           title: '복습',
-          description: '5주차 높은 옥타브 이동 패턴을 전체 복습해요.',
+          description: '11주차 높은 옥타브 반음 전체 내용을 복습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 10,
+            sequences: _day6FullRandom,
+            totalQuestions: 12,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.65),
@@ -409,11 +419,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day7_learn',
           title: '학습',
-          description: '최종 점검 전 높은 옥타브 흐름을 한 번 더 정리해요.',
+          description: '최종 점검 전 높은 옥타브 검은 건반 중심으로 정리해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 10,
+            sequences: _day6FullRandom,
+            totalQuestions: 12,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.65),
@@ -422,11 +432,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day7_practice',
           title: '연습',
-          description: '최종 테스트 전 높은 옥타브 이동을 충분히 연습해요.',
+          description: '최종 테스트 전 충분히 연습해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 16,
+            sequences: _day6FullRandom,
+            totalQuestions: 20,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.78),
@@ -435,11 +445,11 @@ class BeginnerWeek5 {
         LessonPlanStep(
           id: 'day7_check',
           title: '확인',
-          description: '높은 옥타브 음 이동을 최종 확인해요.',
+          description: '높은 옥타브 검은 건반 70% 비율로 최종 확인해요.',
           plan: const LessonPlan(
             type: LessonPlanType.singleNotes,
-            sequences: _movementMixed,
-            totalQuestions: 18,
+            sequences: _day6FullRandom,
+            totalQuestions: 20,
             shuffleQuestions: true,
           ),
           passRule: const PassRule(minAccuracy: 0.8),
@@ -449,34 +459,83 @@ class BeginnerWeek5 {
     );
   }
 
-  static const List<List<int>> _fullRangeAsc = [
-    [72], [74], [76], [77], [79], [81], [83],
+  // ════════════════════════════════════════════════════════════════════════
+  // 높은 옥타브 MIDI (검은 건반 70% / 흰 건반 30%)
+  // 검은 건반: 73(hi C#), 75(hi D#), 78(hi F#), 80(hi G#), 82(hi A#)
+  // 흰 건반:   72(hi C),  74(hi D),  76(hi E),  77(hi F),  79(hi G), 81(hi A), 83(hi B)
+  // ════════════════════════════════════════════════════════════════════════
+
+  static const List<List<int>> _day1Learn = [
+    [73], [73], [75], [73], [75],
+    [72], [73], [74], [75], [76],
   ];
 
-  static const List<List<int>> _fullRangeDesc = [
-    [83], [81], [79], [77], [76], [74], [72],
+  static const List<List<int>> _day1Practice = [
+    [73], [72], [73], [74], [73], [75], [76], [75],
+    [73], [75], [73], [75], [74], [73], [72], [75],
+    [75], [73], [76], [75],
   ];
 
-  static const List<List<int>> _ascDescMix = [
-    [72], [74], [76], [77], [79], [77], [76], [74],
-    [76], [77], [79], [81], [83], [81], [79], [77],
+  static const List<List<int>> _day2Learn = [
+    [78], [78], [80], [78], [80],
+    [77], [78], [79], [80], [82],
   ];
 
-  static const List<List<int>> _skipMoves = [
-    [72], [76], [74], [77], [76], [79], [77], [81], [79], [83],
-    [83], [79], [81], [77], [79], [76], [77], [74], [76], [72],
+  static const List<List<int>> _day2Practice = [
+    [78], [77], [78], [79], [78], [80], [81], [80],
+    [78], [80], [78], [82], [79], [80], [77], [82],
+    [82], [78], [81], [80],
   ];
 
-  static const List<List<int>> _movementMixed = [
-    [72], [74], [76], [77], [79], [81], [83],
-    [83], [81], [79], [77], [76], [74], [72],
-    [72], [76], [74], [77], [76], [79], [77], [81], [79], [83],
+  static const List<List<int>> _allBlackKeys = [
+    [73], [75], [78], [80], [82],
+    [82], [80], [78], [75], [73],
+  ];
+
+  static const List<List<int>> _day3Learn = [
+    [73], [75], [78], [80], [82],
+    [82], [80], [78], [75], [73],
+    [73], [78], [82], [75], [80],
+    [72], [75], [77], [80], [83],
+    [73], [78],
+  ];
+
+  static const List<List<int>> _day4Mixed = [
+    [73], [72], [75], [74], [78],
+    [77], [80], [79], [82], [81],
+    [73], [75], [78], [80], [82],
+    [76], [73], [83], [80], [73],
+    [75], [82],
+  ];
+
+  static const List<List<int>> _day5HalfStepMove = [
+    [72], [73], [72],
+    [74], [73], [75],
+    [76], [75], [76],
+    [77], [78], [77],
+    [79], [78], [80],
+    [81], [80], [82],
+    [83], [82], [83],
+    [73], [72], [73],
+    [75], [74], [75],
+    [78], [79], [78],
+    [80], [79], [80],
+    [82], [81], [82],
+  ];
+
+  static const List<List<int>> _day6FullRandom = [
+    [73], [75], [78], [80], [82],
+    [72], [75], [74], [78], [77],
+    [80], [79], [82], [81], [83],
+    [73], [78], [73], [80], [75],
+    [82], [76], [80], [73], [82],
+    [78], [75], [73], [82], [80],
   ];
 
   static LessonPlan _dummyPlan() {
     return const LessonPlan(
       type: LessonPlanType.singleNotes,
-      sequences: [[72]],
+      sequences: [[73]],
       totalQuestions: 1,
     );
   }

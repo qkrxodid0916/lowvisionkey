@@ -451,7 +451,7 @@ class _LessonScreenState extends State<LessonScreen> {
     if (sfId == null) return;
 
     const int beepMidi = 96;
-    _midi.playNote(sfId: sfId, channel: 0, key: beepMidi, velocity: 60);
+    _midi.playNote(sfId: sfId, channel: 0, key: beepMidi, velocity: 100);
     await Future.delayed(const Duration(milliseconds: 90));
     _midi.stopNote(sfId: sfId, channel: 0, key: beepMidi);
   }

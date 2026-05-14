@@ -15,7 +15,7 @@ class BeginnerMiddleOctaveGuide {
   static CurriculumLesson _guideLesson() {
     return CurriculumLesson(
       id: 'beginner_middle_octave_guide_lesson',
-      title: '가운데 옥타브 듣고 따라 치기',
+      title: '중앙 옥타브 입문',
       mode: LessonInputMode.both,
       octaveGuide: 2,
       plan: _dummyPlan(),

@@ -48,9 +48,7 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
           final progress = snap.data!;
 
           if (course.stages.isEmpty) {
-            return const Center(
-              child: Text("표시할 주차가 없습니다."),
-            );
+            return const Center(child: Text("표시할 주차가 없습니다."));
           }
 
           final safePage = _currentPage.clamp(0, course.stages.length - 1);
@@ -93,18 +91,12 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
                   controller: _pageController,
                   itemCount: course.stages.length,
                   onPageChanged: (page) {
-                    setState(() {
-                      _currentPage = page;
-                    });
+                    setState(() => _currentPage = page);
                   },
                   itemBuilder: (context, stageIndex) {
                     final stage = course.stages[stageIndex];
                     return _buildStageGrid(
-                      context,
-                      course,
-                      stageIndex,
-                      stage,
-                      progress,
+                      context, course, stageIndex, stage, progress,
                     );
                   },
                 ),
@@ -113,13 +105,9 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(course.stages.length, (i) {
                   final selected = i == safePage;
-
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 10,
-                    ),
+                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                     width: selected ? 18 : 8,
                     height: 8,
                     decoration: BoxDecoration(
@@ -155,7 +143,7 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
           crossAxisCount: crossAxisCount,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 2.6,
+          childAspectRatio: 2.2,
         ),
         itemBuilder: (context, lessonIndex) {
           final lesson = stage.lessons[lessonIndex];
@@ -171,7 +159,6 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
           final unlocked = DevSettings.unlockAllLessons
               ? true
               : progress.isUnlocked(linearIndex);
-
           final completed = DevSettings.unlockAllLessons
               ? false
               : _isLessonCompleted(progress, lesson);
@@ -186,19 +173,15 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
             onTap: unlocked
                 ? () {
               Navigator.of(context)
-                  .push(
-                MaterialPageRoute(
-                  builder: (_) => LessonScreen(
-                    courseId: course.id,
-                    stageIndex: stageIndex,
-                    lessonIndex: lessonIndex,
-                    lesson: lesson,
-                  ),
+                  .push(MaterialPageRoute(
+                builder: (_) => LessonScreen(
+                  courseId: course.id,
+                  stageIndex: stageIndex,
+                  lessonIndex: lessonIndex,
+                  lesson: lesson,
                 ),
-              )
-                  .then((_) {
-                setState(() {});
-              });
+              ))
+                  .then((_) => setState(() {}));
             }
                 : null,
           );
@@ -207,35 +190,23 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
     );
   }
 
-  int _toLinearIndex(
-      Course course,
-      int stageIndex,
-      int lessonIndex,
-      ) {
+  int _toLinearIndex(Course course, int stageIndex, int lessonIndex) {
     int index = 0;
-
     for (int s = 0; s < course.stages.length; s++) {
       final stage = course.stages[s];
       for (int l = 0; l < stage.lessons.length; l++) {
-        if (s == stageIndex && l == lessonIndex) {
-          return index;
-        }
+        if (s == stageIndex && l == lessonIndex) return index;
         index++;
       }
     }
-
     return index;
   }
 
   bool _isLessonCompleted(CourseProgress progress, CurriculumLesson lesson) {
     final steps = lesson.effectiveSteps;
     if (steps.isEmpty) return false;
-
     for (final step in steps) {
-      final key = '${lesson.id}:${step.id}';
-      if (!progress.isCompleted(key)) {
-        return false;
-      }
+      if (!progress.isCompleted('${lesson.id}:${step.id}')) return false;
     }
     return true;
   }
@@ -243,11 +214,9 @@ class _CourseLevelsScreenState extends State<CourseLevelsScreen> {
   double _bestAccuracyOfLesson(CourseProgress progress, CurriculumLesson lesson) {
     final steps = lesson.effectiveSteps;
     if (steps.isEmpty) return 0.0;
-
     double best = 0.0;
     for (final step in steps) {
-      final key = '${lesson.id}:${step.id}';
-      final acc = progress.bestAccuracy(key);
+      final acc = progress.bestAccuracy('${lesson.id}:${step.id}');
       if (acc > best) best = acc;
     }
     return best;
@@ -287,44 +256,65 @@ class _LessonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ 완료: 진한 초록 / 진행 가능: 흰색 / 잠김: 회색
+    final Color cardColor = completed
+        ? Colors.green.shade700
+        : unlocked
+        ? Colors.white
+        : Colors.grey.shade300;
+
+    final Color titleColor   = completed ? Colors.white : Colors.black;
+    final Color subtitleColor = completed ? Colors.white70 : Colors.grey.shade700;
+
+    final Color badgeColor    = completed ? Colors.white : (unlocked ? Colors.black : Colors.grey);
+    final Color badgeTextColor = completed ? Colors.green.shade700 : Colors.white;
+
+    final Color buttonBg = completed ? Colors.white : (unlocked ? Colors.black : Colors.grey);
+    final Color buttonFg = completed ? Colors.green.shade700 : Colors.white;
+
     return Material(
-      color: unlocked ? Colors.white : Colors.grey.shade200,
+      color: cardColor,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
+              // 번호 뱃지
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: unlocked ? Colors.black : Colors.grey,
+                  color: badgeColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
                     unlocked ? (completed ? "✓" : "${index + 1}") : "🔒",
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: badgeTextColor,
                       fontSize: 18,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
+
+              // 텍스트 영역
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       item.stage.title,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade700,
+                        color: subtitleColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -333,39 +323,27 @@ class _LessonCard extends StatelessWidget {
                       item.lesson.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
+                        color: titleColor,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
                         if (completed)
-                          const _Pill(
-                            text: "완료",
-                            bg: Colors.black,
-                            fg: Colors.white,
-                          )
+                          const _Pill(text: "완료", bg: Colors.white, fg: Colors.green)
                         else if (unlocked)
-                          const _Pill(
-                            text: "진행 가능",
-                            bg: Colors.white,
-                            fg: Colors.black,
-                            border: true,
-                          )
+                          const _Pill(text: "진행 가능", bg: Colors.white, fg: Colors.black, border: true)
                         else
-                          const _Pill(
-                            text: "잠김",
-                            bg: Colors.grey,
-                            fg: Colors.white,
-                          ),
+                          const _Pill(text: "잠김", bg: Colors.grey, fg: Colors.white),
                         const SizedBox(width: 8),
                         if (unlocked && bestAccuracy > 0)
                           Text(
                             "최고 ${(bestAccuracy * 100).toStringAsFixed(0)}%",
                             style: TextStyle(
-                              color: Colors.grey.shade700,
+                              color: subtitleColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -375,11 +353,13 @@ class _LessonCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+
+              // 버튼
               ElevatedButton(
                 onPressed: onTap,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: unlocked ? Colors.black : Colors.grey,
-                  foregroundColor: Colors.white,
+                  backgroundColor: buttonBg,
+                  foregroundColor: buttonFg,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),

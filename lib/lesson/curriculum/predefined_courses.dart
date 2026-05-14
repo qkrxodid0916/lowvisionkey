@@ -1,3 +1,7 @@
+import 'package:lowvision_key/lesson/curriculum/weeks/beginner_week10.dart';
+import 'package:lowvision_key/lesson/curriculum/weeks/beginner_week11.dart';
+import 'package:lowvision_key/lesson/curriculum/weeks/beginner_week12.dart';
+
 import 'curriculum_models.dart';
 
 import 'weeks/beginner_middle_octave_guide.dart';
@@ -40,6 +44,10 @@ class PredefinedCourses {
         BeginnerWeek9.stage(),
 
         BeginnerHalfStepGuide.stage(),
+
+        BeginnerWeek10.stage(),
+        BeginnerWeek11.stage(),
+        BeginnerWeek12.stage()
       ],
     );
   }

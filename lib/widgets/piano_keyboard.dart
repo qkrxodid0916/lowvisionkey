@@ -275,8 +275,8 @@ class _BlackKeyWidget extends StatelessWidget {
     final Color normalFill = Colors.black;
     final Color pressedFill = Colors.grey.shade800;
 
-    final Color highlightStrongFill = Colors.grey.shade700; // 강
-    final Color highlightWeakFill = Colors.grey.shade900;   // 약(거의 검정)
+    final Color highlightStrongFill = Colors.amber.shade400;
+    final Color highlightWeakFill = Colors.amber.shade200;
 
     Color fill = normalFill;
     if (isPressed) {
@@ -288,7 +288,7 @@ class _BlackKeyWidget extends StatelessWidget {
     // 하이라이트일 때 테두리 강조(강/약)
     final Border? border = isHighlighted
         ? Border.all(
-      color: Colors.white,
+      color: Colors.black,
       width: highlightBlinkOn ? 2.8 : 1.6,
     )
         : null;

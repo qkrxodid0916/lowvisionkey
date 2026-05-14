@@ -13,9 +13,9 @@ class StaffSettings {
 int refMidiForClef(StaffClef clef) {
   switch (clef) {
     case StaffClef.treble:
-      return 64; // E4 (MVP 기준)
+      return 71; // B4 (높은음자리표 중앙선)
     case StaffClef.bass:
-      return 43; // G2 (MVP 기준)
+      return 50; // D3 (낮은음자리표 중앙선)
   }
 }
 
